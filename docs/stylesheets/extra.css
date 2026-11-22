@@ -79,7 +79,7 @@
 
 /* ---------- Base type ---------- */
 .md-typeset {
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   line-height: 1.65;
   font-feature-settings: "cv11", "ss01";
 }
@@ -93,21 +93,21 @@
 }
 
 .md-typeset h1 {
-  font-size: 2.1em;
+  font-size: 1.85em;
   font-weight: 700;
   line-height: 1.15;
   margin: 0 0 1em;
 }
 
 .md-typeset h2 {
-  font-size: 1.55em;
+  font-size: 1.4em;
   font-weight: 700;
   line-height: 1.25;
   margin: 2.2em 0 0.7em;
 }
 
 .md-typeset h3 {
-  font-size: 1.2em;
+  font-size: 1.12em;
   font-weight: 600;
   margin: 1.8em 0 0.6em;
 }
@@ -163,7 +163,7 @@
 }
 
 .md-tabs__link {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 500;
   opacity: 0.72;
 }
@@ -189,7 +189,7 @@
 
 /* ---------- Sidebars ---------- */
 .md-nav {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
 }
 
 .md-nav__title {
@@ -258,9 +258,58 @@
   font-size: 1.05em;
 }
 
+/* Four secondary cards share one row on a wide page instead of leaving one alone. */
+.md-typeset .grid.cards:not(.sowel-primary) {
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+/* The two entry points of the manual, set above the rest: a soft blue card with the icon medallion of the
+   showcase site's section names. */
+.md-typeset .grid.cards.sowel-primary {
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.md-typeset .grid.cards.sowel-primary > ul > li {
+  background: color-mix(in srgb, var(--sowel-mark) 9%, var(--sowel-surface));
+  border: 1px solid color-mix(in srgb, var(--sowel-mark) 26%, transparent);
+  padding: 1rem 1.2rem;
+}
+
+.md-typeset .grid.cards.sowel-primary > ul > li:hover {
+  border-color: var(--sowel-mark);
+  box-shadow: 0 12px 28px -16px color-mix(in srgb, var(--sowel-btn) 60%, transparent);
+}
+
+.md-typeset .grid.cards.sowel-primary > ul > li > p:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0 0 0.55rem;
+  font-size: 1.15em;
+  font-weight: 650;
+}
+
+.md-typeset .grid.cards.sowel-primary > ul > li > p:first-child .twemoji {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.7rem;
+  background: linear-gradient(145deg, var(--sowel-mark), var(--sowel-btn));
+  color: #fff;
+  box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--sowel-btn) 60%, transparent);
+}
+
+.md-typeset .grid.cards.sowel-primary > ul > li > p:first-child .twemoji svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: currentcolor;
+}
+
 /* ---------- Tables ---------- */
 .md-typeset table:not([class]) {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   background: var(--sowel-surface);
   border: 1px solid var(--sowel-border);
   border-radius: var(--sowel-radius);
@@ -272,7 +321,7 @@
 .md-typeset table:not([class]) th {
   background: var(--sowel-band);
   color: var(--sowel-heading);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -292,7 +341,7 @@
 /* ---------- Admonitions ---------- */
 .md-typeset .admonition,
 .md-typeset details {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   background: var(--sowel-surface);
   border: 1px solid var(--sowel-border);
   border-left: 4px solid var(--sowel-mark);
@@ -347,7 +396,7 @@
 }
 
 .md-typeset pre > code {
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   line-height: 1.6;
 }
 
@@ -356,27 +405,32 @@
   border-radius: var(--sowel-radius);
 }
 
-/* A code block is always dark, like on the showcase site. */
+/* A code block is a soft blue-grey panel in light, a deep one in dark: never black on a light page. */
 [data-md-color-scheme="default"] .md-typeset .highlight {
-  --md-code-bg-color: #0f2433;
-  --md-code-fg-color: #e4eef4;
-  --md-code-hl-color: rgba(127, 184, 212, 0.18);
-  --md-code-hl-number-color: #7fb8d4;
-  --md-code-hl-special-color: #f2bc6e;
-  --md-code-hl-function-color: #9ccbe2;
-  --md-code-hl-constant-color: #b6a9f0;
-  --md-code-hl-keyword-color: #7fb8d4;
-  --md-code-hl-string-color: #9fd4a8;
-  --md-code-hl-name-color: #e4eef4;
-  --md-code-hl-operator-color: #a9c3d3;
-  --md-code-hl-punctuation-color: #a9c3d3;
-  --md-code-hl-comment-color: #7e97a6;
-  --md-code-hl-generic-color: #a9c3d3;
-  --md-code-hl-variable-color: #e4eef4;
+  --md-code-bg-color: #eaf1f6;
+  --md-code-fg-color: #11171b;
+  --md-code-hl-color: rgba(43, 114, 153, 0.14);
+  --md-code-hl-number-color: #9a5b00;
+  --md-code-hl-special-color: #9a5b00;
+  --md-code-hl-function-color: #1a4f6e;
+  --md-code-hl-constant-color: #5b46b0;
+  --md-code-hl-keyword-color: #144159;
+  --md-code-hl-string-color: #1d6b3a;
+  --md-code-hl-name-color: #11171b;
+  --md-code-hl-operator-color: #46535c;
+  --md-code-hl-punctuation-color: #46535c;
+  --md-code-hl-comment-color: #66767f;
+  --md-code-hl-generic-color: #46535c;
+  --md-code-hl-variable-color: #11171b;
+}
+
+[data-md-color-scheme="default"] .md-typeset .highlight pre {
+  border: 1px solid var(--sowel-border);
+  border-radius: var(--sowel-radius);
 }
 
 [data-md-color-scheme="default"] .md-typeset .highlight .md-clipboard {
-  color: #a9c3d3;
+  color: #46535c;
 }
 
 /* ---------- Tabs, quotes, footer ---------- */
@@ -408,10 +462,10 @@
 
 @media screen and (max-width: 44.9375em) {
   .md-typeset {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
   .md-typeset h1 {
-    font-size: 1.75em;
+    font-size: 1.6em;
   }
 }
