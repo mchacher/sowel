@@ -81,6 +81,8 @@ This creates the first administrator account. You can add more users later from 
 !!! warning
 There is no password recovery mechanism. Make sure you remember your admin credentials.
 
+Changing your password from **Settings → Account** logs out every other browser signed in to your account with a password. The device you made the change from stays signed in. If you think someone else knows your password, change it, then check the API tokens listed in **Settings → Account**: a token keeps working after a password change, so delete any you do not recognise.
+
 Once logged in, you can turn on **two-factor authentication** (an authenticator app code, plus one-time backup codes) from **Settings → Account → Two-Factor Authentication**. It is optional and off by default. As with the password above, there is no email recovery: if you lose both your authenticator app and your backup codes, another admin can reset your two-factor authentication from Settings → Administration → Users, or — if you are the only admin — from the host via `docker exec sowel node scripts/auth/reset-mfa.mjs <username>`.
 
 After the first account is created, the regular **login screen** greets you on subsequent visits:

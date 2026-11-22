@@ -43,7 +43,8 @@ export class UserManager {
         "UPDATE users SET preferences = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       ),
       updatePassword: this.db.prepare(
-        "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        `UPDATE users SET password_hash = ?, password_changed_at = ?,
+         updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       ),
       updateLastLogin: this.db.prepare(
         "UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -118,7 +119,8 @@ export class UserManager {
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
     const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-    this.stmts.updatePassword.run(hash, id);
+    // Issue #1305 — stamped so that access tokens issued before now are refused.
+    this.stmts.updatePassword.run(hash, Date.now(), id);
     this.logger.info({ userId: id }, "Password changed");
   }
 

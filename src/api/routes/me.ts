@@ -39,10 +39,6 @@ const passwordChangeBodySchema = {
   properties: {
     currentPassword: { type: "string", minLength: 1 },
     newPassword: { type: "string", minLength: 6 },
-    // Issue #1305 — the caller's own refresh token, so this session survives
-    // while every other session of the account ends. Optional: without it,
-    // every session ends, the caller's included.
-    refreshToken: { type: "string", minLength: 1 },
   },
 } as const;
 
@@ -111,14 +107,14 @@ export function registerMeRoutes(app: FastifyInstance, deps: MeDeps): void {
 
   // PUT /api/v1/me/password — Change password
   app.put<{
-    Body: { currentPassword: string; newPassword: string; refreshToken?: string };
+    Body: { currentPassword: string; newPassword: string };
   }>(
     "/api/v1/me/password",
     { schema: { body: passwordChangeBodySchema } },
     async (request, reply) => {
       if (!request.auth) return reply.code(401).send({ error: "Not authenticated" });
 
-      const { currentPassword, newPassword, refreshToken } = request.body;
+      const { currentPassword, newPassword } = request.body;
 
       const user = userManager.getByUsername(userManager.getById(request.auth.userId)!.username);
       if (!user) return reply.code(404).send({ error: "User not found" });
@@ -130,8 +126,12 @@ export function registerMeRoutes(app: FastifyInstance, deps: MeDeps): void {
       // Spec 151 — defense in depth: a new password invalidates any browser
       // previously trusted to skip the MFA step.
       mfaService.revokeAllTrustedDevices(request.auth.userId);
-      // Issue #1305 — a new password ends every other session of the account.
-      const sessionsRevoked = authService.revokeUserSessions(request.auth.userId, refreshToken);
+      // Issue #1305 — a new password ends every session of the account: the
+      // refresh tokens go, and the access tokens issued before now are refused
+      // (password_changed_at). The caller gets a fresh session in the reply so
+      // the browser that made the change stays in.
+      const sessionsRevoked = authService.revokeUserSessions(request.auth.userId);
+      const session = authService.reissueSession(request.auth.userId);
       auditLogger.log({
         ...buildActor(request, userManager),
         action: "user.password_change",
@@ -140,7 +140,7 @@ export function registerMeRoutes(app: FastifyInstance, deps: MeDeps): void {
         ip: request.ip,
         meta: { sessionsRevoked },
       });
-      return { success: true };
+      return { success: true, ...session };
     },
   );
 

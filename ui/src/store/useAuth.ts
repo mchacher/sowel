@@ -9,6 +9,7 @@ import {
   authLogout,
   getMe,
   updateMyPreferences,
+  changeMyPassword,
   setAccessToken,
   setOnUnauthorized,
 } from "../api";
@@ -43,6 +44,12 @@ interface AuthState {
   refreshSession: () => Promise<boolean>;
   updatePreferences: (prefs: UserPreferences) => Promise<void>;
   fetchMe: () => Promise<void>;
+  /**
+   * Issue #1305 — change the password and adopt the fresh session the server
+   * returns: every previous session of the account, this one's included, is
+   * refused from now on.
+   */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const STORAGE_KEY_ACCESS = "sowel_access_token";
@@ -63,7 +70,7 @@ function clearTokens(): void {
   useAuth.setState({ accessToken: null });
 }
 
-export function getStoredRefreshToken(): string | null {
+function getStoredRefreshToken(): string | null {
   return localStorage.getItem(STORAGE_KEY_REFRESH);
 }
 
@@ -163,6 +170,12 @@ export const useAuth = create<AuthState>((set, get) => {
     cancelMfaChallenge: () => {
       pendingUsername = null;
       set({ mfaChallenge: null });
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+      const tokens = await changeMyPassword(currentPassword, newPassword);
+      saveTokens(tokens.accessToken, tokens.refreshToken);
+      set({ user: tokens.user });
     },
 
     setup: async (data) => {

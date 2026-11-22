@@ -369,6 +369,7 @@ Chaque changement est enregistré en entier ; un tick de 30 s ferme les tranches
 - **Middleware d'auth** : tente d'abord le décodage JWT, puis le lookup de token d'API.
 - **Rôles** : `admin` > `standard` > `viewer` (permissions hiérarchiques).
 - **Setup au premier démarrage** : `POST /api/v1/auth/setup` crée le premier utilisateur admin.
+- **Révocation des sessions** (issue #1305) : `verifyAccessToken` relit le compte à chaque requête HTTP, donc un compte désactivé ou supprimé est refusé et c'est le rôle enregistré qui s'applique, pas celui signé dans le token. Un changement de mot de passe supprime tous les refresh tokens du compte, horodate `users.password_changed_at` pour que les tokens d'accès émis avant soient refusés, et remet une nouvelle paire à l'appelant. Un changement de rôle, une désactivation ou une réinitialisation MFA par un admin supprime les refresh tokens de l'utilisateur. Les WebSockets ne sont vérifiés qu'à la connexion.
 
 ---
 

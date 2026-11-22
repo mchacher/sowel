@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({
   authLogout: vi.fn(),
   getMe: vi.fn(),
   updateMyPreferences: vi.fn(),
+  changeMyPassword: vi.fn(),
   setAccessToken: vi.fn(),
   setOnUnauthorized: vi.fn(),
 }));
@@ -371,5 +372,33 @@ describe("updatePreferences / fetchMe", () => {
     api.getMe.mockRejectedValue(new Error("401"));
     await useAuth.getState().fetchMe();
     expect(useAuth.getState().user).toBeNull();
+  });
+});
+
+describe("changePassword (issue #1305)", () => {
+  it("adopts the fresh session the server returns, replacing the revoked one", async () => {
+    globalThis.localStorage.setItem(ACCESS_KEY, "acc-old");
+    globalThis.localStorage.setItem(REFRESH_KEY, "ref-old");
+    await loadStore();
+    api.changeMyPassword.mockResolvedValue(
+      tokens({ accessToken: "acc-new", refreshToken: "ref-new" }),
+    );
+
+    await useAuth.getState().changePassword("old-pw", "new-password");
+
+    expect(api.changeMyPassword).toHaveBeenCalledWith("old-pw", "new-password");
+    expect(localStorage.getItem(ACCESS_KEY)).toBe("acc-new");
+    expect(localStorage.getItem(REFRESH_KEY)).toBe("ref-new");
+    expect(api.setAccessToken).toHaveBeenLastCalledWith("acc-new");
+    expect(useAuth.getState().accessToken).toBe("acc-new");
+  });
+
+  it("keeps the current session untouched when the change is refused", async () => {
+    globalThis.localStorage.setItem(REFRESH_KEY, "ref-old");
+    await loadStore();
+    api.changeMyPassword.mockRejectedValue(new Error("Current password is incorrect"));
+
+    await expect(useAuth.getState().changePassword("wrong", "new-password")).rejects.toThrow();
+    expect(localStorage.getItem(REFRESH_KEY)).toBe("ref-old");
   });
 });

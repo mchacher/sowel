@@ -36,13 +36,14 @@ async function buildApp(opts: BuildOpts = {}) {
   }
 
   const created: unknown[] = [];
-  const revoked: Array<[string, string | undefined]> = [];
+  const revoked: string[] = [];
   registerMeRoutes(app, {
     authService: {
-      revokeUserSessions: (userId: string, keep?: string) => {
-        revoked.push([userId, keep]);
+      revokeUserSessions: (userId: string) => {
+        revoked.push(userId);
         return 1;
       },
+      reissueSession: () => ({ accessToken: "at-new", refreshToken: "rt-new", expiresIn: 900 }),
       getUserApiTokens: () => [],
       createApiToken: (_userId: string, name: string) => {
         created.push(name);
@@ -159,7 +160,8 @@ describe("me routes (schema validation, #482)", () => {
       payload: { currentPassword: "correct", newPassword: "longenough" },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ success: true });
+    // Issue #1305 — the reply now also carries the caller's fresh session.
+    expect(res.json()).toMatchObject({ success: true });
   });
 
   it("400s POST /me/tokens with a missing name", async () => {
@@ -181,28 +183,22 @@ describe("me routes (schema validation, #482)", () => {
     expect(built.created).toEqual(["my-token"]);
   });
 
-  describe("PUT /me/password ends the other sessions (issue #1305)", () => {
-    it("revokes every other session and keeps the caller's", async () => {
+  describe("PUT /me/password ends every session and reissues the caller's (issue #1305)", () => {
+    it("revokes the account's sessions and answers with a fresh pair", async () => {
       const built = await buildApp({ authed: true });
       app = built.app;
       const res = await app.inject({
         method: "PUT",
         url: "/api/v1/me/password",
-        payload: { currentPassword: "correct", newPassword: "new-password", refreshToken: "rt-me" },
-      });
-      expect(res.statusCode).toBe(200);
-      expect(built.revoked).toEqual([["u1", "rt-me"]]);
-    });
-
-    it("revokes every session when the caller sends no refresh token", async () => {
-      const built = await buildApp({ authed: true });
-      app = built.app;
-      await app.inject({
-        method: "PUT",
-        url: "/api/v1/me/password",
         payload: { currentPassword: "correct", newPassword: "new-password" },
       });
-      expect(built.revoked).toEqual([["u1", undefined]]);
+      expect(res.statusCode).toBe(200);
+      expect(built.revoked).toEqual(["u1"]);
+      expect(res.json()).toMatchObject({
+        success: true,
+        accessToken: "at-new",
+        refreshToken: "rt-new",
+      });
     });
 
     it("revokes nothing when the current password is wrong", async () => {
@@ -211,7 +207,7 @@ describe("me routes (schema validation, #482)", () => {
       await app.inject({
         method: "PUT",
         url: "/api/v1/me/password",
-        payload: { currentPassword: "wrong", newPassword: "new-password", refreshToken: "rt-me" },
+        payload: { currentPassword: "wrong", newPassword: "new-password" },
       });
       expect(built.revoked).toEqual([]);
     });

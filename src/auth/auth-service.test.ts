@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import jwt from "jsonwebtoken";
 import { OTP } from "otplib";
@@ -142,23 +142,11 @@ describe("AuthService", () => {
     type Tokens = { accessToken: string; refreshToken: string };
     const login = async () => (await auth.login("alice", "test-fixture-password")) as Tokens;
 
-    it("ends every session but the caller's when a token is kept", async () => {
-      const caller = await login();
-      const other = await login();
-      expect(auth.revokeUserSessions(userId, caller.refreshToken)).toBe(1);
-      await expect(auth.refresh(other.refreshToken)).rejects.toThrow(AuthError);
-      await expect(auth.refresh(caller.refreshToken)).resolves.toHaveProperty("accessToken");
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
-    it("ends every session when no token is kept", async () => {
-      const a = await login();
-      const b = await login();
-      expect(auth.revokeUserSessions(userId)).toBe(2);
-      await expect(auth.refresh(a.refreshToken)).rejects.toThrow(AuthError);
-      await expect(auth.refresh(b.refreshToken)).rejects.toThrow(AuthError);
-    });
-
-    it("does not spare a session when the kept token belongs to someone else", async () => {
+    it("ends every refresh token of the user, and only theirs", async () => {
       await userManager.createUser({
         username: "bob",
         displayName: "Bob",
@@ -166,11 +154,34 @@ describe("AuthService", () => {
         role: "standard",
       });
       const bob = (await auth.login("bob", "test-fixture-password")) as Tokens;
-      const alice = await login();
-      expect(auth.revokeUserSessions(userId, bob.refreshToken)).toBe(1);
-      await expect(auth.refresh(alice.refreshToken)).rejects.toThrow(AuthError);
-      // Bob's own session is untouched: revocation is scoped to the user.
+      const a = await login();
+      const b = await login();
+      expect(auth.revokeUserSessions(userId)).toBe(2);
+      await expect(auth.refresh(a.refreshToken)).rejects.toThrow(AuthError);
+      await expect(auth.refresh(b.refreshToken)).rejects.toThrow(AuthError);
       await expect(auth.refresh(bob.refreshToken)).resolves.toHaveProperty("accessToken");
+    });
+
+    it("refuses access tokens issued before a password change, accepts the reissued one", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-22T10:00:00.000Z"));
+      const before = await login();
+      expect(() => auth.verifyAccessToken(before.accessToken)).not.toThrow();
+
+      vi.setSystemTime(new Date("2026-11-22T10:05:00.000Z"));
+      await userManager.updatePassword(userId, "a-new-password");
+      auth.revokeUserSessions(userId);
+      const fresh = auth.reissueSession(userId);
+
+      expect(() => auth.verifyAccessToken(before.accessToken)).toThrow(AuthError);
+      await expect(auth.refresh(before.refreshToken)).rejects.toThrow(AuthError);
+      expect(auth.verifyAccessToken(fresh.accessToken).userId).toBe(userId);
+      await expect(auth.refresh(fresh.refreshToken)).resolves.toHaveProperty("accessToken");
+    });
+
+    it("does not reissue a session for a disabled account", () => {
+      userManager.updateUser(userId, { displayName: "Alice", role: "admin", enabled: false });
+      expect(() => auth.reissueSession(userId)).toThrow(AuthError);
     });
   });
 

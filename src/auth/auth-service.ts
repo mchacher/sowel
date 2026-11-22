@@ -83,8 +83,9 @@ export class AuthService {
       ),
       deleteRefresh: db.prepare("DELETE FROM refresh_tokens WHERE token_hash = ?"),
       deleteUserRefreshTokens: db.prepare("DELETE FROM refresh_tokens WHERE user_id = ?"),
-      deleteUserRefreshTokensExcept: db.prepare(
-        "DELETE FROM refresh_tokens WHERE user_id = ? AND token_hash != ?",
+      // Issue #1305 — what an access token may do right now.
+      getSessionState: db.prepare(
+        "SELECT role, enabled, password_changed_at FROM users WHERE id = ?",
       ),
       cleanExpiredRefresh: db.prepare(
         "DELETE FROM refresh_tokens WHERE expires_at <= datetime('now')",
@@ -202,26 +203,32 @@ export class AuthService {
   }
 
   /**
-   * Issue #1305 — end a user's sessions by deleting their refresh tokens.
+   * Issue #1305 — end a user's sessions by deleting all their refresh tokens.
    *
-   * `keepRefreshToken` spares the caller's own session (password change made
-   * from this browser). It only spares a token that belongs to `userId`: a
-   * foreign or unknown value simply matches nothing and every row goes.
-   * Access tokens already issued stay valid until they expire, but
-   * `verifyAccessToken` re-reads the user, so disable and demotion bite at
-   * once; only a password change leaves that short window.
+   * Access tokens already issued are not listed anywhere, but none outlives
+   * this for long: `verifyAccessToken` re-reads the account on every request,
+   * so a disable or a role change applies at once, and a password change
+   * refuses every token issued before it (`password_changed_at`).
    */
-  revokeUserSessions(userId: string, keepRefreshToken?: string): number {
-    const result = keepRefreshToken
-      ? this.stmts.deleteUserRefreshTokensExcept.run(userId, sha256(keepRefreshToken))
-      : this.stmts.deleteUserRefreshTokens.run(userId);
+  revokeUserSessions(userId: string): number {
+    const result = this.stmts.deleteUserRefreshTokens.run(userId);
     if (result.changes > 0) {
-      this.logger.info(
-        { userId, revoked: result.changes, keptCaller: Boolean(keepRefreshToken) },
-        "User sessions revoked",
-      );
+      this.logger.info({ userId, revoked: result.changes }, "User sessions revoked");
     }
     return result.changes;
+  }
+
+  /**
+   * Issue #1305 — a fresh session for the caller after their own sessions were
+   * revoked (password change), so the browser that made the change stays in
+   * while every other one is out.
+   */
+  reissueSession(userId: string): AuthTokens {
+    const user = this.userManager.getById(userId);
+    if (!user || !user.enabled) {
+      throw new AuthError("User not found or disabled", 401);
+    }
+    return this.generateTokens(user);
   }
 
   verifyAccessToken(token: string): JwtPayload {
@@ -237,14 +244,24 @@ export class AuthService {
       throw new AuthError("Invalid or expired token", 401);
     }
     // Issue #1305 — the token proves who the caller was at issue time, not what
-    // they may do now. A deleted or disabled account is refused, and the role
-    // is the stored one, so a demotion takes effect on the next request rather
-    // than when the token expires. Same lookup verifyApiToken already does.
-    const user = this.userManager.getById(payload.userId);
-    if (!user || !user.enabled) {
+    // they may do now. A deleted or disabled account is refused, a token issued
+    // before the last password change is refused, and the role is the stored
+    // one, so a demotion takes effect on the next request rather than when the
+    // token expires. `iat` is in whole seconds, hence the floor: a token issued
+    // in the same second as the change, the caller's fresh one, still passes.
+    const state = this.stmts.getSessionState.get(payload.userId) as
+      { role: UserRole; enabled: number; password_changed_at: number | null } | undefined;
+    if (!state || !state.enabled) {
       throw new AuthError("Invalid or expired token", 401);
     }
-    return { ...payload, role: user.role };
+    const issuedAt = (payload as JwtPayload & { iat?: number }).iat;
+    if (
+      state.password_changed_at !== null &&
+      (issuedAt === undefined || issuedAt < Math.floor(state.password_changed_at / 1000))
+    ) {
+      throw new AuthError("Invalid or expired token", 401);
+    }
+    return { ...payload, role: state.role };
   }
 
   private generateTokens(user: User): AuthTokens {

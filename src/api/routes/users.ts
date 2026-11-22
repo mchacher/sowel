@@ -208,13 +208,16 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
     if (!existing) return reply.code(404).send({ error: "User not found" });
 
     mfaService.disable(request.params.id);
+    // Issue #1305 — this is the lost-device path, and a lost phone may still
+    // hold a live session. The user logs in again with their password.
+    const sessionsRevoked = authService.revokeUserSessions(request.params.id);
     auditLogger.log({
       ...buildActor(request, userManager),
       action: "mfa.disabled.by_admin",
       targetType: "user",
       targetId: request.params.id,
       ip: request.ip,
-      meta: { username: existing.username },
+      meta: { username: existing.username, sessionsRevoked },
     });
     return reply.code(204).send();
   });

@@ -26,6 +26,7 @@ function makeDeps(overrides: { userExists?: boolean } = {}) {
       createUser: async () => user,
       updateUser: () => user,
     },
+    mfaService: { disable: () => undefined },
     auditLogger: { log: () => undefined },
     logger: createLogger("silent").logger,
   } as unknown as Parameters<typeof registerUserRoutes>[1];
@@ -160,5 +161,11 @@ describe("PUT /api/v1/users/:id ends the user's sessions (issue #1305)", () => {
     await put({ displayName: "Robert" });
     await put({ role: "standard", enabled: true });
     expect(revoked).toEqual([]);
+  });
+
+  it("on an admin MFA reset (the lost-device path)", async () => {
+    const res = await app.inject({ method: "DELETE", url: "/api/v1/users/u-1/mfa" });
+    expect(res.statusCode).toBe(204);
+    expect(revoked).toEqual(["u-1"]);
   });
 });

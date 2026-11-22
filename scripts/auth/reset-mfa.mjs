@@ -33,10 +33,13 @@ try {
     const totp = db.prepare("DELETE FROM user_mfa_totp WHERE user_id = ?").run(userId);
     const codes = db.prepare("DELETE FROM user_mfa_backup_codes WHERE user_id = ?").run(userId);
     const devices = db.prepare("DELETE FROM mfa_trusted_devices WHERE user_id = ?").run(userId);
+    // Issue #1305 — the lost-device path: a lost phone may still hold a session.
+    const sessions = db.prepare("DELETE FROM refresh_tokens WHERE user_id = ?").run(userId);
     return {
       totp: totp.changes,
       backupCodes: codes.changes,
       trustedDevices: devices.changes,
+      sessions: sessions.changes,
     };
   })(user.id);
 
@@ -44,6 +47,7 @@ try {
   console.log(`  TOTP secret removed: ${result.totp > 0 ? "yes" : "was not enrolled"}`);
   console.log(`  Backup codes removed: ${result.backupCodes}`);
   console.log(`  Trusted devices removed: ${result.trustedDevices}`);
+  console.log(`  Sessions ended: ${result.sessions}`);
   console.log("The account can now log in with just its password.");
 } finally {
   db.close();
