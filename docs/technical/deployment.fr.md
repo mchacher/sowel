@@ -104,7 +104,8 @@ environment:
 
 - La valeur est une liste d'IP ou de plages CIDR séparées par des virgules. Vide (par défaut), personne n'est cru.
 - Pour trouver la bonne adresse, regardez l'IP des entrées `auth.login.success` récentes du journal d'audit pour des connexions passées par le proxy. Avec `cloudflared` sur l'hôte Docker et pointé vers `localhost:3000`, c'est la passerelle du bridge Docker, en général `172.18.0.1` ou `172.17.0.1`.
-- Ne listez que le proxy. `X-Forwarded-For` n'est cru que si la connexion vient d'une adresse listée, donc un appareil de votre réseau local ne peut pas choisir sa propre adresse. Lister toute une plage du LAN rendrait ce choix à chacun de ses appareils.
+- Ne listez que le proxy. `X-Forwarded-For` n'est cru que si la connexion vient d'une adresse listée, donc un appareil qui joint Sowel directement depuis sa propre adresse ne peut pas en choisir une autre. Lister toute une plage du LAN rendrait ce choix à chacun de ses appareils.
+- Faire confiance à la passerelle Docker revient à faire confiance à tout ce que Docker relaie par elle, pas seulement au tunnel : les autres processus de l'hôte qui se connectent à `localhost:3000` et, avec le proxy userland par défaut de Docker, les clients qui joignent le port publié en IPv6. Pour en exclure les appareils du LAN, publiez le port en IPv4 uniquement (`"0.0.0.0:3000:3000"`). Le montage le plus strict fait tourner le connecteur du tunnel comme conteneur sur le réseau de Sowel, avec une adresse fixe, et ne liste que cette adresse.
 
 ---
 

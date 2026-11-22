@@ -110,7 +110,8 @@ environment:
 
 - The value is a comma-separated list of IPs or CIDR ranges. Empty (the default) trusts nobody.
 - To find the right address, look at the IP on recent `auth.login.success` entries in the audit log for logins made through the proxy. With `cloudflared` running on the Docker host and pointed at `localhost:3000`, it is the Docker bridge gateway, usually `172.18.0.1` or `172.17.0.1`.
-- List only the proxy. `X-Forwarded-For` is believed solely when the connection comes from a listed address, so a device on your LAN cannot pick its own address. Listing a whole LAN range would hand that choice back to every device on it.
+- List only the proxy. `X-Forwarded-For` is believed solely when the connection comes from a listed address, so a device that reaches Sowel directly on its own address cannot pick a different one. Listing a whole LAN range would hand that choice back to every device on it.
+- Trusting the Docker gateway trusts everything Docker relays through it, not only the tunnel: other processes on the host that connect to `localhost:3000`, and, with Docker's default userland proxy, clients reaching the published port over IPv6. To keep LAN devices out of that set, publish the port on IPv4 only (`"0.0.0.0:3000:3000"`). The tightest setup runs the tunnel connector as a container on Sowel's network with a fixed address, and lists only that address.
 
 ---
 

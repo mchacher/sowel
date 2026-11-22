@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { isIP } from "node:net";
 import { dirname, resolve } from "node:path";
 import { config as dotenvConfig } from "dotenv";
 import type { AppConfig } from "./shared/types.js";
@@ -90,6 +91,34 @@ function resolveInfluxToken(dataDir: string): string {
   return DEFAULT_INFLUX_TOKEN;
 }
 
+/**
+ * Issue #1302 — parse SOWEL_TRUSTED_PROXIES (comma-separated IPs or CIDRs).
+ *
+ * Validated here, at the very start of boot, because Fastify would otherwise
+ * throw a bare `invalid IP address: …` from inside createServer, after the
+ * plugins have started, and a restart loop would never name the setting.
+ * Hostnames are refused on purpose: the list is matched against socket
+ * addresses, so a name could never match anyway.
+ */
+export function parseTrustedProxies(raw: string): string[] {
+  const entries = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  for (const entry of entries) {
+    const [addr, prefix, extra] = entry.split("/");
+    const family = isIP(addr ?? "");
+    const max = family === 4 ? 32 : 128;
+    const prefixOk = prefix === undefined || (/^\d{1,3}$/.test(prefix) && Number(prefix) <= max);
+    if (family === 0 || extra !== undefined || !prefixOk) {
+      throw new Error(
+        `SOWEL_TRUSTED_PROXIES: invalid entry "${entry}" (expected an IP address or a CIDR range such as 172.18.0.1 or 10.0.0.0/8)`,
+      );
+    }
+  }
+  return entries;
+}
+
 export function loadConfig(): AppConfig {
   const sqlitePath = env("SQLITE_PATH", "./data/sowel.db");
   const dataDir = dirname(resolve(sqlitePath));
@@ -101,10 +130,7 @@ export function loadConfig(): AppConfig {
     api: {
       port: envInt("API_PORT", 3000),
       host: env("API_HOST", "0.0.0.0"),
-      trustedProxies: env("SOWEL_TRUSTED_PROXIES", "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0),
+      trustedProxies: parseTrustedProxies(env("SOWEL_TRUSTED_PROXIES", "")),
     },
     jwt: {
       secret: resolveJwtSecret(dataDir),
