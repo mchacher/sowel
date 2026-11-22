@@ -44,12 +44,12 @@ Sowel is an open-source home automation engine. It groups your devices into equi
 
     For developers: architecture, API, data model, and how to write a plugin or a recipe.
 
--   **[Showcase site](https://sowel.org)**
+-   **[Articles](https://sowel.org/en/articles/)**
 
-    What Sowel is, in pictures, with a short film.
+    The ideas behind Sowel, on the showcase site.
 
 </div>
 
 <!-- prettier-ignore-end -->
 
-The source code and the issue tracker are on [GitHub](https://github.com/mchacher/sowel).
+The showcase site, [sowel.org](https://sowel.org/en/), shows what Sowel is, in pictures and with a short film. The source code and the issue tracker are on [GitHub](https://github.com/mchacher/sowel).
