@@ -128,6 +128,25 @@ plugins:
 
 nav:
   - Home: index.md
+  - User Guide:
+    - user/index.md
+    - Preparing the Host: user/host-setup.md
+    - Getting Started: user/getting-started.md
+    - Devices: user/devices.md
+    - Equipments: user/equipments.md
+    - Dashboard: user/dashboard.md
+    - Zones & Rooms: user/zones.md
+    - Modes & Calendar: user/modes.md
+    - Recipes: user/recipes.md
+    - Plugins: user/plugins.md
+    - Energy Monitoring: user/energy.md
+    - Shared Access: user/shared-access.md
+    - Remote Access: user/remote-access.md
+    - Release Notes: release-notes.md
+  - In Depth:
+    - Where the Energy Goes: deep-dives/energy-tour.md
+    - The Surplus Arbiter: deep-dives/surplus-arbiter.md
+    - Watching Over the Panels: deep-dives/pv-health.md
   - Technical Guide:
     - technical/index.md
     - Architecture: technical/architecture.md
@@ -145,26 +164,6 @@ nav:
     - Contributing: technical/contributing.md
     - Dependency Management: technical/dependency-management.md
     - Specs Index: specs-index.md
-  - In Depth:
-    - Where the Energy Goes: deep-dives/energy-tour.md
-    - The Surplus Arbiter: deep-dives/surplus-arbiter.md
-    - Watching Over the Panels: deep-dives/pv-health.md
-  - User Guide:
-    - user/index.md
-    - Preparing the Host: user/host-setup.md
-    - Getting Started: user/getting-started.md
-    - Devices: user/devices.md
-    - Equipments: user/equipments.md
-    - Dashboard: user/dashboard.md
-    - Zones & Rooms: user/zones.md
-    - Modes & Calendar: user/modes.md
-    - Recipes: user/recipes.md
-    - Plugins: user/plugins.md
-    - Energy Monitoring: user/energy.md
-    - Shared Access: user/shared-access.md
-    - Remote Access: user/remote-access.md
-    - Release Notes: release-notes.md
-
 extra:
   alternate:
     - name: English

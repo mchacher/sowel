@@ -8,31 +8,39 @@ hide:
 
 Sowel est un moteur domotique open source. Il regroupe vos appareils en équipements et en zones, et fait tourner des recettes par-dessus. Ce manuel explique comment installer et utiliser Sowel, comment fonctionnent les fonctions d'énergie, et comment le moteur est construit.
 
+## Pour commencer
+
+<div class="grid cards sowel-primary" markdown>
+
+- :material-rocket-launch-outline: **[Premiers pas](user/getting-started.md)**
+
+  Installer Sowel, créer le premier compte et ajouter vos premiers appareils.
+
+- :material-book-open-variant-outline: **[Guide utilisateur](user/index.md)**
+
+  Appareils, équipements, zones, modes, recettes, plugins et accès distant.
+
+</div>
+
+## Pour aller plus loin
+
 <div class="grid cards" markdown>
 
--   **[Premiers pas](user/getting-started.md)**
+- **[Énergie](deep-dives/energy-tour.md)**
 
-    Installer Sowel, créer le premier compte et ajouter vos premiers appareils.
+  Où va l'énergie, l'arbitre de surplus et la surveillance des panneaux.
 
--   **[Guide utilisateur](user/index.md)**
+- **[Notes de version](release-notes.md)**
 
-    Appareils, équipements, zones, modes, recettes, plugins et accès distant.
+  Ce qui change à chaque version.
 
--   **[Énergie](deep-dives/energy-tour.md)**
+- **[Guide technique](technical/index.md)**
 
-    Où va l'énergie, l'arbitre de surplus et la surveillance des panneaux.
+  Pour les développeurs : architecture, API, modèle de données, et comment écrire un plugin ou une recette.
 
--   **[Guide technique](technical/index.md)**
+- **[Site vitrine](https://sowel.org)**
 
-    Architecture, API, modèle de données, et comment écrire un plugin ou une recette.
-
--   **[Notes de version](release-notes.md)**
-
-    Ce qui change à chaque version.
-
--   **[Site vitrine](https://sowel.org)**
-
-    Ce qu'est Sowel, en images, avec un court film.
+  Ce qu'est Sowel, en images, avec un court film.
 
 </div>
 
