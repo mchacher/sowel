@@ -99,6 +99,12 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
       14:00–15:00 at 15:00) would otherwise lose the last complete period;
    5. after FR2.6's normalisation, only the points with `alignedFrom ≤ t < alignedTo` are kept:
       the running period, which the extra period brings in, is stamped `alignedTo` and dropped.
+   6. when a downsampled bucket answered and has no point for the last complete period (the
+      downsampling task writes it a few minutes after the period ends; `queryHistory` only falls
+      back to the raw bucket when the downsampled one returns nothing), that one period is read
+      again, so it comes from the raw bucket — the same call, counted once by FR2.7. Added after
+      review of the implementation: without it, rain and temperature lost their last hour for a
+      few minutes after each hour, exactly when an hourly consumer reads.
 
    So the result holds **complete periods only**, never the running hour or day, and the first
    period is never cut by the 7-day clamp. A recipe that needs local days for energy reads `1h` and

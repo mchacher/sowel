@@ -41,18 +41,29 @@ function kindOf(category: DataCategory | undefined): Kind {
 
 // ── Period boundaries ──────────────────────────────────────────────
 
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function formatterFor(tz: string): Intl.DateTimeFormat {
+  let f = formatters.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+    });
+    formatters.set(tz, f);
+  }
+  return f;
+}
+
 /** Offset of `tz` from UTC at instant `ms`, in ms (positive east of UTC). */
 function tzOffsetMs(ms: number, tz: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-  }).formatToParts(new Date(ms));
+  const parts = formatterFor(tz).formatToParts(new Date(ms));
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
   const asUtc = Date.UTC(
     get("year"),
@@ -201,12 +212,14 @@ export function createRecipeHistory(deps: RecipeHistoryDeps): RecipeHistory {
     const periods = periodsFor(aggregation, kind, tz);
 
     // FR2.5 — the window.
-    if (typeof p.from !== "string" || (p.to !== undefined && typeof p.to !== "string")) {
+    // A plain-JS recipe may pass `to: null`: read as "now", like an absent `to`.
+    const to = p.to ?? undefined;
+    if (typeof p.from !== "string" || (to !== undefined && typeof to !== "string")) {
       return { done: true, result: empty() };
     }
     const now = Date.now();
     let fromMs = parseFrom(p.from).getTime();
-    let toMs = p.to === undefined ? now : parseFrom(p.to).getTime();
+    let toMs = to === undefined ? now : parseFrom(to).getTime();
     if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) {
       return { done: true, result: empty() };
     }
@@ -250,17 +263,25 @@ export function createRecipeHistory(deps: RecipeHistoryDeps): RecipeHistory {
     calls.push(now);
   }
 
-  async function run(q: Extract<Prepared, { done: false }>): Promise<RecipeHistoryResult> {
+  /**
+   * One `queryHistory` read of the aligned periods [fromMs, toMs), normalised
+   * to period starts (FR2.6). `null` when the read hit an error (FR2.8).
+   */
+  async function read(
+    q: Extract<Prepared, { done: false }>,
+    fromMs: number,
+    toMs: number,
+  ): Promise<{ points: HistoryPoint[]; source: "downsampled" | "raw" } | null> {
     let hadError = false;
-    const { points: rows, source } = await queryHistory(
+    const { points: rows, source = "raw" } = await queryHistory(
       deps.influxClient,
       {
         equipmentId: q.equipmentId,
         alias: q.alias,
-        from: new Date(q.alignedFrom).toISOString(),
+        from: new Date(fromMs).toISOString(),
         // FR2.5.4 — Flux's stop is exclusive and some stores stamp a period at
         // its end: one more period keeps the last complete one.
-        to: new Date(q.periods.next(q.alignedTo)).toISOString(),
+        to: new Date(q.periods.next(toMs)).toISOString(),
         aggregation: q.aggregation,
         dataType: "number",
         category: q.category,
@@ -270,19 +291,43 @@ export function createRecipeHistory(deps: RecipeHistoryDeps): RecipeHistory {
       },
       logger,
     );
-    // FR2.8 — partial points after an error are dropped.
-    if (hadError) return failed();
+    if (hadError) return null;
 
-    const shift = stampsAtEnd(q.kind, source ?? "raw");
+    const shift = stampsAtEnd(q.kind, source);
     const points: HistoryPoint[] = [];
     for (const row of rows) {
       const stored = Date.parse(row.time);
       if (!Number.isFinite(stored)) continue;
       const start = shift ? stored - q.periods.before(stored) : stored;
       // FR2.5.5 — complete periods only: the running one, brought in by the
-      // extra period, is stamped alignedTo and dropped here.
-      if (start < q.alignedFrom || start >= q.alignedTo) continue;
+      // extra period, is stamped `toMs` and dropped here.
+      if (start < fromMs || start >= toMs) continue;
       points.push({ ...row, time: new Date(start).toISOString() });
+    }
+    return { points, source };
+  }
+
+  async function run(q: Extract<Prepared, { done: false }>): Promise<RecipeHistoryResult> {
+    const main = await read(q, q.alignedFrom, q.alignedTo);
+    // FR2.8 — partial points after an error are dropped.
+    if (!main) return failed();
+    const points = main.points;
+
+    // The downsampling tasks write a closed period a few minutes after it
+    // ends, and `queryHistory` only falls back to the raw bucket when the
+    // downsampled one has nothing at all. Read right after the hour, the last
+    // complete period would be missing for rain and continuous measures while
+    // energy (raw) has it. Re-read that one period: empty in the downsampled
+    // bucket, `queryHistory` then answers it from the raw one.
+    const lastStart = q.alignedTo - q.periods.before(q.alignedTo);
+    if (
+      main.source === "downsampled" &&
+      lastStart >= q.alignedFrom &&
+      !points.some((p) => Date.parse(p.time) === lastStart)
+    ) {
+      const tail = await read(q, lastStart, q.alignedTo);
+      if (!tail) return failed();
+      points.push(...tail.points);
     }
     return { points, ok: true };
   }

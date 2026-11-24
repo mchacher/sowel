@@ -399,7 +399,7 @@ Every thermometer carries today's minimum and maximum as computed data, `<alias>
 
 - **Which bindings.** On a `weather` station, every temperature binding (spec 134). On any other equipment, the reading aliased `temperature` (category `temperature`, the one the zone averages — a setpoint never counts) and any `temperature_outdoor` binding.
 - **`lastUpdated`** is the instant of the last sample taken into the envelope, even one that did not move it: a minimum reached at 06:30 still reads fresh at 18:00 while the probe reports.
-- **Events.** Both entries are emitted as `equipment.data.changed`. A recipe reacting to every change of a sensor should filter on the alias it watches.
+- **Events.** Both entries are emitted as `equipment.data.changed` when the envelope moves (a sample inside it only refreshes `lastUpdated`). A recipe reacting to every change of a sensor should filter on the alias it watches.
 
 ## Shared Helpers
 

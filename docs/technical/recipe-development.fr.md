@@ -395,7 +395,7 @@ Tout thermomètre porte le minimum et le maximum du jour en données calculées,
 
 - **Quels bindings.** Sur une station `weather`, tout binding de température (spec 134). Sur tout autre équipement, la mesure d'alias `temperature` (catégorie `temperature`, celle dont la zone fait la moyenne — une consigne ne compte jamais) et tout binding `temperature_outdoor`.
 - **`lastUpdated`** est l'instant du dernier échantillon intégré à l'enveloppe, même s'il ne l'a pas élargie : un minimum atteint à 06:30 reste frais à 18:00 tant que la sonde émet.
-- **Événements.** Les deux entrées sont émises en `equipment.data.changed`. Une recette qui réagit à chaque changement d'un capteur doit filtrer sur l'alias qu'elle surveille.
+- **Événements.** Les deux entrées sont émises en `equipment.data.changed` quand l'enveloppe bouge (un échantillon à l'intérieur ne fait que rafraîchir `lastUpdated`). Une recette qui réagit à chaque changement d'un capteur doit filtrer sur l'alias qu'elle surveille.
 
 ## Helpers partagés
 

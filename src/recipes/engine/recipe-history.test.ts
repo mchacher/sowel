@@ -555,3 +555,152 @@ describe("recipe history — rate limit (FR2.7)", () => {
     for (let i = 0; i < 10; i++) await expect(b.query(real)).resolves.toMatchObject({ ok: true });
   });
 });
+
+describe("recipe history — review follow-ups", () => {
+  it("FR2.5.6 — the last complete hour not yet downsampled is read again from the raw bucket", async () => {
+    vi.setSystemTime(new Date("2026-11-17T15:00:05Z"));
+    const capture: string[] = [];
+    const influx = makeInflux({
+      capture,
+      rowsFor: (flux) => {
+        // Rain, start-stamped. The hourly task has not written 14:00 yet.
+        if (isDownsampled(flux)) {
+          return flux.includes("start: 2026-11-17T14:00:00.000Z")
+            ? []
+            : [
+                { _time: "2026-11-17T12:00:00Z", _value: 0.2 },
+                { _time: "2026-11-17T13:00:00Z", _value: 0.3 },
+              ];
+        }
+        return [{ _time: "2026-11-17T14:00:00Z", _value: 0.5 }];
+      },
+    });
+    const res = await helper(influx).query({
+      equipmentId: "gauge",
+      alias: "rain",
+      from: "2026-11-17T12:00:00Z",
+      aggregation: "1h",
+    });
+    expect(res.ok).toBe(true);
+    expect(res.points.map((p) => [p.time, p.value])).toEqual([
+      ["2026-11-17T12:00:00.000Z", 0.2],
+      ["2026-11-17T13:00:00.000Z", 0.3],
+      ["2026-11-17T14:00:00.000Z", 0.5],
+    ]);
+  });
+
+  it("FR2.5.6 — the re-read of a continuous measure is normalised on its own source (raw, end-stamped)", async () => {
+    vi.setSystemTime(new Date("2026-11-17T15:00:05Z"));
+    const influx = makeInflux({
+      rowsFor: (flux) => {
+        if (isDownsampled(flux)) {
+          return flux.includes("start: 2026-11-17T14:00:00.000Z")
+            ? []
+            : [{ _time: "2026-11-17T14:00:00Z", mean: 18 }]; // hour 13:00, end-stamped
+        }
+        return [{ _time: "2026-11-17T15:00:00Z", mean: 19 }]; // hour 14:00, end-stamped
+      },
+    });
+    const res = await helper(influx).query({
+      equipmentId: "thermo",
+      alias: "temperature",
+      from: "2026-11-17T13:00:00Z",
+      aggregation: "1h",
+    });
+    expect(res.points.map((p) => [p.time, p.value])).toEqual([
+      ["2026-11-17T13:00:00.000Z", 18],
+      ["2026-11-17T14:00:00.000Z", 19],
+    ]);
+  });
+
+  it("FR2.5.6 — no re-read when the last complete period is already there", async () => {
+    const capture: string[] = [];
+    await helper(
+      makeInflux({
+        capture,
+        rowsFor: () => [{ _time: "2026-11-17T14:00:00Z", _value: 0.4 }],
+      }),
+    ).query({
+      equipmentId: "gauge",
+      alias: "rain",
+      from: "2026-11-17T12:00:00Z",
+      aggregation: "1h",
+    });
+    expect(capture).toHaveLength(1);
+  });
+
+  it("FR2.8 — a failing re-read → { points: [], ok: false }", async () => {
+    vi.setSystemTime(new Date("2026-11-17T15:00:05Z"));
+    let calls = 0;
+    const influx = makeInflux({
+      rowsFor: () => {
+        calls++;
+        if (calls === 1) return [{ _time: "2026-11-17T12:00:00Z", _value: 0.2 }];
+        throw new Error("influx down");
+      },
+    });
+    const res = await helper(influx).query({
+      equipmentId: "gauge",
+      alias: "rain",
+      from: "2026-11-17T12:00:00Z",
+      aggregation: "1h",
+    });
+    expect(res).toEqual({ points: [], ok: false });
+  });
+
+  it("FR2.7 — calls answered while Influx is not configured do not count", async () => {
+    let connected = false;
+    const influx = {
+      ...makeInflux({}),
+      isConnected: () => connected,
+    } as unknown as InfluxClient;
+    const h = helper(influx);
+    const q = {
+      equipmentId: "thermo",
+      alias: "temperature",
+      from: "-24h",
+      aggregation: "1h" as const,
+    };
+    for (let i = 0; i < 20; i++)
+      await expect(h.query(q)).resolves.toEqual({ points: [], ok: false });
+    connected = true;
+    for (let i = 0; i < 10; i++) await expect(h.query(q)).resolves.toMatchObject({ ok: true });
+  });
+
+  it("FR2.5 — rain 1d across the spring DST change keeps whole local days (23 h)", async () => {
+    vi.setSystemTime(new Date("2026-03-31T10:00:00Z"));
+    const capture: string[] = [];
+    const influx = makeInflux({
+      capture,
+      rowsFor: () => [
+        { _time: "2026-03-28T23:00:00Z", _value: 1 }, // 29 Mar, CET midnight
+        { _time: "2026-03-29T22:00:00Z", _value: 2 }, // 30 Mar, CEST midnight
+      ],
+    });
+    const res = await helper(influx).query({
+      equipmentId: "gauge",
+      alias: "rain",
+      from: "2026-03-28T12:00:00Z",
+      aggregation: "1d",
+    });
+    expect(res.points.map((p) => p.time)).toEqual([
+      "2026-03-28T23:00:00.000Z",
+      "2026-03-29T22:00:00.000Z",
+    ]);
+    expect(capture[0]).toContain(
+      "range(start: 2026-03-28T23:00:00.000Z, stop: 2026-03-31T22:00:00.000Z)",
+    );
+  });
+
+  it("FR2.5 — `to: null` from a plain-JS recipe reads as now", async () => {
+    const capture: string[] = [];
+    await helper(makeInflux({ capture })).query({
+      equipmentId: "gauge",
+      alias: "rain",
+      from: "2026-11-17T12:00:00Z",
+      to: null,
+      aggregation: "1h",
+    } as never);
+    expect(capture[0]).toContain("stop: 2026-11-17T16:00:00.000Z");
+  });
+});
