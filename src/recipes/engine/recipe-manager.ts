@@ -85,8 +85,8 @@ export class RecipeManager {
   /** Spec 140 — capacity arbiter behind `ctx.helpers.energy`. Null in tests
    *  and shadow contexts: the helper then denies `arbiter-disabled`. */
   private capacityArbiter: CapacityArbiter | null;
-  /** Spec 211 — source of `ctx.helpers.history`. Null in tests and shadow
-   *  contexts: the helper is then absent. */
+  /** Spec 211 — source of `ctx.helpers.history`. Null in most tests: the
+   *  helper is then absent. (In shadow mode no instance starts, spec 124.) */
   private influxClient: InfluxClient | null;
 
   constructor(
@@ -796,6 +796,12 @@ export class RecipeManager {
               equipmentManager: this.equipmentManager,
               logger: this.logger,
               instanceId,
+              // Bound to this start, like equipmentData: a closure left over
+              // from a stopped or earlier start reads nothing.
+              isCurrent:
+                publishToken === undefined
+                  ? undefined
+                  : () => this.publishTokens.get(instanceId) === publishToken,
             })
           : undefined,
       },

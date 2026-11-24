@@ -546,7 +546,7 @@ if (ctx.helpers.history) {
 - **Sparse.** A period without samples has no point; nothing is zero-filled. Continuous measures also carry `min` and `max`.
 - **Bounds.** The window is clamped to the last 7 days. `alias` must be a data binding or a computed data entry of the equipment; a boolean or enum binding, an unknown alias or an invalid window answer `{ points: [], ok: true }` without querying.
 - **`ok: false`** means InfluxDB is not configured, unreachable or failed — not that there is nothing to read. Partial results are never returned.
-- **Rate limit.** At most 10 calls reaching InfluxDB per rolling minute per instance; beyond, the promise rejects with `Error("history rate limit")`. One call per series per closed hour is far under it. On a rejection, keep what you already read and resume at the next tick.
+- **Rate limit.** At most 10 calls reaching InfluxDB per rolling minute per instance; beyond, the promise rejects with `Error("history rate limit")`. One call runs a few Flux queries (the last complete period is always read from the raw bucket, so it is never missing right after the hour); one call per series per closed hour is far under the limit. On a rejection, keep what you already read and resume at the next tick.
 
 ## Event Bus Events
 

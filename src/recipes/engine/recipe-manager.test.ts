@@ -1273,4 +1273,17 @@ describe("RecipeManager × ctx.helpers.history (spec 211)", () => {
     await expect(tmp.query(q)).rejects.toThrow("history rate limit");
     await expect(inst.query(q)).resolves.toEqual({ points: [], ok: true });
   });
+
+  it("a stopped instance's leftover helper reads nothing (bound to its start)", async () => {
+    setup(fakeInflux);
+    const seen = { validate: [] as unknown[], instance: [] as unknown[] };
+    registerReader(seen);
+    const instance = manager.createInstance("reader", {});
+    const inst = seen.instance[0] as { query: (p: unknown) => Promise<unknown> };
+    const q = { equipmentId: thermoId, alias: "temperature", from: "-24h", aggregation: "1h" };
+    await expect(inst.query(q)).resolves.toEqual({ points: [], ok: true });
+
+    manager.deleteInstance(instance.id);
+    await expect(inst.query(q)).resolves.toEqual({ points: [], ok: false });
+  });
 });

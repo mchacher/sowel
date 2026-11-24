@@ -78,6 +78,13 @@ export class WeatherTempExtremesTracker {
 
   /** equipmentId → alias → envelope */
   private readonly state = new Map<string, Map<string, Envelope>>();
+  /**
+   * equipmentId → tracked alias → category. Built on first use, dropped on
+   * equipment.created/updated/removed (bindings and type changes emit
+   * `equipment.updated`), so a sample costs a map lookup, not a bindings query
+   * — every equipment's samples reach this handler since spec 211.
+   */
+  private readonly trackedCache = new Map<string, Map<string, DataCategory>>();
   private unsubscribeData: (() => void) | null = null;
   private unsubscribeRemoved: (() => void) | null = null;
   private readonly stmts;
@@ -123,7 +130,12 @@ export class WeatherTempExtremesTracker {
     });
 
     this.unsubscribeRemoved = this.eventBus.on((event) => {
+      if (event.type === "equipment.created" || event.type === "equipment.updated") {
+        this.trackedCache.delete(event.equipment.id);
+        return;
+      }
       if (event.type !== "equipment.removed") return;
+      this.trackedCache.delete(event.equipmentId);
       this.state.delete(event.equipmentId);
       this.stmts.deleteEquipment.run(event.equipmentId);
     });
@@ -144,15 +156,17 @@ export class WeatherTempExtremesTracker {
    * rather than yesterday's envelope).
    */
   getComputedDataForEquipment(equipmentId: string): ComputedDataEntry[] {
-    const eq = this.equipmentManager.getById(equipmentId);
-    if (!eq) return [];
     const perAlias = this.state.get(equipmentId);
     if (!perAlias) return [];
+    const tracked = this.trackedOf(equipmentId);
 
     const today = localDay(new Date());
     const entries: ComputedDataEntry[] = [];
     for (const [alias, env] of perAlias) {
       if (env.day !== today) continue;
+      // A binding that stopped qualifying (retyped equipment, renamed alias)
+      // keeps its row until midnight, but is no longer shown.
+      if (!tracked.has(alias)) continue;
       const lastUpdated = env.lastSampleAt ?? env.updatedAt;
       entries.push(
         {
@@ -181,13 +195,8 @@ export class WeatherTempExtremesTracker {
     // Ignore our own computed aliases (safety against feedback loops).
     if (alias.endsWith("_min_today") || alias.endsWith("_max_today")) return;
 
-    const eq = this.equipmentManager.getById(equipmentId);
-    if (!eq) return;
-
-    const binding = this.equipmentManager
-      .getDataBindingsWithValues(equipmentId)
-      .find((b) => b.alias === alias);
-    if (!binding || !isTracked(eq.type, binding)) return;
+    const category = this.trackedOf(equipmentId).get(alias);
+    if (!category) return;
 
     const now = new Date();
     const today = localDay(now);
@@ -207,7 +216,7 @@ export class WeatherTempExtremesTracker {
         day: today,
         min: value,
         max: value,
-        category: binding.category,
+        category,
         updatedAt,
         lastSampleAt: updatedAt,
       };
@@ -252,6 +261,21 @@ export class WeatherTempExtremesTracker {
         previous: null,
       });
     }
+  }
+
+  /** The tracked aliases of an equipment and their categories (see `trackedCache`). */
+  private trackedOf(equipmentId: string): Map<string, DataCategory> {
+    const cached = this.trackedCache.get(equipmentId);
+    if (cached) return cached;
+    const tracked = new Map<string, DataCategory>();
+    const eq = this.equipmentManager.getById(equipmentId);
+    if (eq) {
+      for (const b of this.equipmentManager.getDataBindingsWithValues(equipmentId)) {
+        if (isTracked(eq.type, b)) tracked.set(b.alias, b.category);
+      }
+    }
+    this.trackedCache.set(equipmentId, tracked);
+    return tracked;
   }
 
   private loadFromDb(): void {

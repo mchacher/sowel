@@ -111,7 +111,14 @@ function fixedPeriods(len: number): Periods {
 /** FR2.5 — local days (rain): cut at local midnight, 23- or 25-hour days included. */
 function localDayPeriods(tz: string): Periods {
   const floor = (ms: number) => localMidnight(localDateKey(ms, tz), tz);
-  const next = (ms: number) => localMidnight(localDateKey(ms, tz) + DAY_MS, tz);
+  // In a zone whose DST change skips midnight itself (America/Santiago), the
+  // computed midnight can fall back onto the previous date: step one more day
+  // so a boundary always moves forward.
+  const next = (ms: number) => {
+    const key = localDateKey(ms, tz);
+    const t = localMidnight(key + DAY_MS, tz);
+    return t > ms ? t : localMidnight(key + 2 * DAY_MS, tz);
+  };
   return {
     floor,
     ceil: (ms) => {
@@ -149,6 +156,12 @@ export interface RecipeHistoryDeps {
   instanceId: string;
   /** IANA zone rain days are cut in. Defaults to the server's, as `queryHistory`. */
   timezone?: string;
+  /**
+   * False once the start this helper was built for is over (instance stopped
+   * or restarted): a leftover closure then reads nothing, and a restart does
+   * not add a second budget. Absent = always current (validation contexts).
+   */
+  isCurrent?: () => boolean;
 }
 
 type Prepared =
@@ -203,8 +216,8 @@ export function createRecipeHistory(deps: RecipeHistoryDeps): RecipeHistory {
       category = binding.category;
     } else {
       const computed = deps.equipmentManager
-        .getByIdWithDetails(equipmentId)
-        ?.computedData?.find((c) => c.alias === alias);
+        .getComputedDataFor(equipmentId)
+        .find((c) => c.alias === alias);
       if (!computed) return { done: true, result: empty() };
       category = computed.category;
     }
@@ -239,8 +252,9 @@ export function createRecipeHistory(deps: RecipeHistoryDeps): RecipeHistory {
     const alignedTo = periods.floor(toMs);
     if (alignedTo <= alignedFrom) return { done: true, result: empty() };
 
-    // FR2.8 — not configured: nothing to ask.
+    // FR2.8 — not configured: nothing to ask. A stopped start asks nothing either.
     if (!deps.influxClient.isConnected()) return { done: true, result: failed() };
+    if (deps.isCurrent && !deps.isCurrent()) return { done: true, result: failed() };
 
     return {
       done: false,
@@ -271,7 +285,8 @@ export function createRecipeHistory(deps: RecipeHistoryDeps): RecipeHistory {
     q: Extract<Prepared, { done: false }>,
     fromMs: number,
     toMs: number,
-  ): Promise<{ points: HistoryPoint[]; source: "downsampled" | "raw" } | null> {
+    rawOnly: boolean,
+  ): Promise<HistoryPoint[] | null> {
     let hadError = false;
     const { points: rows, source = "raw" } = await queryHistory(
       deps.influxClient,
@@ -285,6 +300,7 @@ export function createRecipeHistory(deps: RecipeHistoryDeps): RecipeHistory {
         aggregation: q.aggregation,
         dataType: "number",
         category: q.category,
+        rawOnly,
         onError: () => {
           hadError = true;
         },
@@ -299,37 +315,31 @@ export function createRecipeHistory(deps: RecipeHistoryDeps): RecipeHistory {
       const stored = Date.parse(row.time);
       if (!Number.isFinite(stored)) continue;
       const start = shift ? stored - q.periods.before(stored) : stored;
-      // FR2.5.5 — complete periods only: the running one, brought in by the
-      // extra period, is stamped `toMs` and dropped here.
+      // FR2.5.5 — complete periods only: the period after `toMs`, brought in
+      // by the extra period, is stamped `toMs` and dropped here.
       if (start < fromMs || start >= toMs) continue;
       points.push({ ...row, time: new Date(start).toISOString() });
     }
-    return { points, source };
+    return points;
   }
 
   async function run(q: Extract<Prepared, { done: false }>): Promise<RecipeHistoryResult> {
-    const main = await read(q, q.alignedFrom, q.alignedTo);
-    // FR2.8 — partial points after an error are dropped.
-    if (!main) return failed();
-    const points = main.points;
-
-    // The downsampling tasks write a closed period a few minutes after it
-    // ends, and `queryHistory` only falls back to the raw bucket when the
-    // downsampled one has nothing at all. Read right after the hour, the last
-    // complete period would be missing for rain and continuous measures while
-    // energy (raw) has it. Re-read that one period: empty in the downsampled
-    // bucket, `queryHistory` then answers it from the raw one.
+    // FR2.5.6 — the last complete period is always read from the raw bucket.
+    // The downsampling tasks write a closed period a few minutes after it ends
+    // (and a rain day is summed from hourly rows, its last hour included), so
+    // right after the hour — when an hourly consumer reads — a downsampled
+    // bucket may lack it, or hold it partially. `queryHistory` only falls back
+    // to raw when the downsampled bucket has nothing at all, and asking it for
+    // the last period alone would not do: an end-stamped bucket answers that
+    // window with the period before. The raw bucket keeps 7 days, which covers
+    // it.
     const lastStart = q.alignedTo - q.periods.before(q.alignedTo);
-    if (
-      main.source === "downsampled" &&
-      lastStart >= q.alignedFrom &&
-      !points.some((p) => Date.parse(p.time) === lastStart)
-    ) {
-      const tail = await read(q, lastStart, q.alignedTo);
-      if (!tail) return failed();
-      points.push(...tail.points);
-    }
-    return { points, ok: true };
+    const head = lastStart > q.alignedFrom ? await read(q, q.alignedFrom, lastStart, false) : [];
+    // FR2.8 — partial points after an error are dropped.
+    if (!head) return failed();
+    const tail = await read(q, lastStart, q.alignedTo, true);
+    if (!tail) return failed();
+    return { points: [...head, ...tail], ok: true };
   }
 
   return {

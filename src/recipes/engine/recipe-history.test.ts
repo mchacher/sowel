@@ -28,8 +28,7 @@ function makeEquipmentManager(
 ): EquipmentManager {
   return {
     getDataBindingsWithValues: (id: string) => bindings[id] ?? [],
-    getByIdWithDetails: (id: string) =>
-      id in bindings || id in computed ? { computedData: computed[id] ?? [] } : null,
+    getComputedDataFor: (id: string) => computed[id] ?? [],
   } as unknown as EquipmentManager;
 }
 
@@ -42,7 +41,13 @@ function makeInflux(opts: {
   const queryApi = {
     iterateRows(flux: string) {
       opts.capture?.push(flux);
-      const rows = opts.rowsFor?.(flux) ?? [];
+      // Like Influx: only the rows inside the query's range [start, stop).
+      const m = flux.match(/range\(start: ([^,]+), stop: ([^)]+)\)/);
+      const inRange = (r: Row) =>
+        !m ||
+        (Date.parse(String(r._time)) >= Date.parse(m[1]) &&
+          Date.parse(String(r._time)) < Date.parse(m[2]));
+      const rows = (opts.rowsFor?.(flux) ?? []).filter(inRange);
       return {
         async *[Symbol.asyncIterator]() {
           for (const row of rows) {
@@ -149,21 +154,26 @@ describe("recipe history — stamps (FR2.5, FR2.6)", () => {
       ["2026-11-17T14:00:00.000Z", 320],
     ]);
     // FR2.5.4 — the query runs to the aligned `to` (15:00) + 1 h.
+    // FR2.5.4 / FR2.5.6 — the head runs to the last complete hour (14:00) + 1 h;
+    // that hour is read from the raw bucket, to 15:00 + 1 h.
     expect(capture[0]).toContain(
-      "range(start: 2026-11-17T12:00:00.000Z, stop: 2026-11-17T16:00:00.000Z)",
+      "range(start: 2026-11-17T12:00:00.000Z, stop: 2026-11-17T15:00:00.000Z)",
+    );
+    expect(capture.at(-1)).toContain('from(bucket: "sowel")');
+    expect(capture.at(-1)).toContain(
+      "range(start: 2026-11-17T14:00:00.000Z, stop: 2026-11-17T16:00:00.000Z)",
     );
   });
 
-  it("energy 1h, `source: downsampled` rows stamped at the start → stamps unchanged", async () => {
+  it("energy 1h, `source: downsampled` rows stamped at the start → stamps unchanged, the last hour from raw (end-stamped)", async () => {
     const influx = makeInflux({
       rowsFor: (flux) =>
         isDownsampled(flux)
           ? [
               { _time: "2026-11-17T12:00:00Z", _value: 300 },
-              { _time: "2026-11-17T14:00:00Z", _value: 320 },
               { _time: "2026-11-17T15:00:00Z", _value: 99 }, // running hour
             ]
-          : [],
+          : [{ _time: "2026-11-17T15:00:00Z", _value: 320 }], // raw: hour 14:00 at its end
     });
     const res = await helper(influx).query({
       equipmentId: "meter",
@@ -307,7 +317,11 @@ describe("recipe history — stamps (FR2.5, FR2.6)", () => {
     ]);
     // from rounded up to the next local midnight, to + 1 local day.
     expect(capture[0]).toContain(
-      "range(start: 2026-11-14T23:00:00.000Z, stop: 2026-11-17T23:00:00.000Z)",
+      "range(start: 2026-11-14T23:00:00.000Z, stop: 2026-11-16T23:00:00.000Z)",
+    );
+    // The last complete day (16 Nov) from raw, to + 1 local day.
+    expect(capture.at(-1)).toContain(
+      "range(start: 2026-11-15T23:00:00.000Z, stop: 2026-11-17T23:00:00.000Z)",
     );
   });
 
@@ -332,7 +346,11 @@ describe("recipe history — stamps (FR2.5, FR2.6)", () => {
       "2026-10-25T23:00:00.000Z",
     ]);
     expect(capture[0]).toContain(
-      "range(start: 2026-10-24T22:00:00.000Z, stop: 2026-10-27T23:00:00.000Z)",
+      "range(start: 2026-10-24T22:00:00.000Z, stop: 2026-10-26T23:00:00.000Z)",
+    );
+    // 26 Oct, after the 25-hour day, from raw.
+    expect(capture.at(-1)).toContain(
+      "range(start: 2026-10-25T23:00:00.000Z, stop: 2026-10-27T23:00:00.000Z)",
     );
   });
 
@@ -368,7 +386,10 @@ describe("recipe history — stamps (FR2.5, FR2.6)", () => {
     });
     // from 09:42:39 → 10:00; to 13:42:39 → 13:00; stop 14:00.
     expect(capture[0]).toContain(
-      "range(start: 2026-11-17T10:00:00.000Z, stop: 2026-11-17T14:00:00.000Z)",
+      "range(start: 2026-11-17T10:00:00.000Z, stop: 2026-11-17T13:00:00.000Z)",
+    );
+    expect(capture.at(-1)).toContain(
+      "range(start: 2026-11-17T12:00:00.000Z, stop: 2026-11-17T14:00:00.000Z)",
     );
   });
 
@@ -565,12 +586,10 @@ describe("recipe history — review follow-ups", () => {
       rowsFor: (flux) => {
         // Rain, start-stamped. The hourly task has not written 14:00 yet.
         if (isDownsampled(flux)) {
-          return flux.includes("start: 2026-11-17T14:00:00.000Z")
-            ? []
-            : [
-                { _time: "2026-11-17T12:00:00Z", _value: 0.2 },
-                { _time: "2026-11-17T13:00:00Z", _value: 0.3 },
-              ];
+          return [
+            { _time: "2026-11-17T12:00:00Z", _value: 0.2 },
+            { _time: "2026-11-17T13:00:00Z", _value: 0.3 },
+          ];
         }
         return [{ _time: "2026-11-17T14:00:00Z", _value: 0.5 }];
       },
@@ -589,14 +608,12 @@ describe("recipe history — review follow-ups", () => {
     ]);
   });
 
-  it("FR2.5.6 — the re-read of a continuous measure is normalised on its own source (raw, end-stamped)", async () => {
+  it("FR2.5.6 — review case: the hourly bucket holds 13:00 (stamped 14:00) but not 14:00 yet; 14:00 comes from raw", async () => {
     vi.setSystemTime(new Date("2026-11-17T15:00:05Z"));
     const influx = makeInflux({
       rowsFor: (flux) => {
         if (isDownsampled(flux)) {
-          return flux.includes("start: 2026-11-17T14:00:00.000Z")
-            ? []
-            : [{ _time: "2026-11-17T14:00:00Z", mean: 18 }]; // hour 13:00, end-stamped
+          return [{ _time: "2026-11-17T14:00:00Z", mean: 18 }]; // hour 13:00, end-stamped
         }
         return [{ _time: "2026-11-17T15:00:00Z", mean: 19 }]; // hour 14:00, end-stamped
       },
@@ -613,12 +630,15 @@ describe("recipe history — review follow-ups", () => {
     ]);
   });
 
-  it("FR2.5.6 — no re-read when the last complete period is already there", async () => {
+  it("FR2.5.6 — the last complete period comes from raw even when the downsampled bucket holds a partial copy", async () => {
     const capture: string[] = [];
-    await helper(
+    const res = await helper(
       makeInflux({
         capture,
-        rowsFor: () => [{ _time: "2026-11-17T14:00:00Z", _value: 0.4 }],
+        rowsFor: (flux) =>
+          isDownsampled(flux)
+            ? [{ _time: "2026-11-17T14:00:00Z", _value: 0.1 }]
+            : [{ _time: "2026-11-17T14:00:00Z", _value: 0.4 }],
       }),
     ).query({
       equipmentId: "gauge",
@@ -626,7 +646,20 @@ describe("recipe history — review follow-ups", () => {
       from: "2026-11-17T12:00:00Z",
       aggregation: "1h",
     });
+    expect(res.points.map((p) => [p.time, p.value])).toEqual([["2026-11-17T14:00:00.000Z", 0.4]]);
+    expect(capture.at(-1)).toContain('from(bucket: "sowel")');
+  });
+
+  it("FR2.5.6 — a one-period window reads the raw bucket only", async () => {
+    const capture: string[] = [];
+    await helper(makeInflux({ capture })).query({
+      equipmentId: "thermo",
+      alias: "temperature",
+      from: "2026-11-17T14:00:00Z",
+      aggregation: "1h",
+    });
     expect(capture).toHaveLength(1);
+    expect(capture[0]).toContain('from(bucket: "sowel")');
   });
 
   it("FR2.8 — a failing re-read → { points: [], ok: false }", async () => {
@@ -688,7 +721,11 @@ describe("recipe history — review follow-ups", () => {
       "2026-03-29T22:00:00.000Z",
     ]);
     expect(capture[0]).toContain(
-      "range(start: 2026-03-28T23:00:00.000Z, stop: 2026-03-31T22:00:00.000Z)",
+      "range(start: 2026-03-28T23:00:00.000Z, stop: 2026-03-30T22:00:00.000Z)",
+    );
+    // 30 Mar, after the 23-hour day, from raw.
+    expect(capture.at(-1)).toContain(
+      "range(start: 2026-03-29T22:00:00.000Z, stop: 2026-03-31T22:00:00.000Z)",
     );
   });
 
@@ -701,6 +738,33 @@ describe("recipe history — review follow-ups", () => {
       to: null,
       aggregation: "1h",
     } as never);
-    expect(capture[0]).toContain("stop: 2026-11-17T16:00:00.000Z");
+    expect(capture.at(-1)).toContain("stop: 2026-11-17T16:00:00.000Z");
+  });
+});
+
+describe("recipe history — a zone whose DST change skips midnight", () => {
+  it("rain 1d in America/Santiago keeps moving forward across the skipped midnight", async () => {
+    // Chile springs forward on 2026-09-06 at 00:00 local: that midnight does not exist.
+    vi.setSystemTime(new Date("2026-09-08T15:00:00Z"));
+    const capture: string[] = [];
+    const h = createRecipeHistory({
+      influxClient: makeInflux({ capture }),
+      equipmentManager: EM,
+      logger: silent,
+      instanceId: "inst-1",
+      timezone: "America/Santiago",
+    });
+    const res = await h.query({
+      equipmentId: "gauge",
+      alias: "rain",
+      from: "2026-09-03T12:00:00Z",
+      aggregation: "1d",
+    });
+    expect(res.ok).toBe(true);
+    for (const flux of capture) {
+      const m = flux.match(/range\(start: ([^,]+), stop: ([^)]+)\)/);
+      expect(m).not.toBeNull();
+      expect(Date.parse(m![2])).toBeGreaterThan(Date.parse(m![1]));
+    }
   });
 });

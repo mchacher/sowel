@@ -865,4 +865,27 @@ describe("queryHistory — spec 211 (source, onError)", () => {
     );
     expect(errors).toBe(0);
   });
+
+  it("spec 211 FR2.5.6 — rawOnly aggregates the raw bucket and never reads a downsampled one", async () => {
+    for (const category of [undefined, "energy", "rain"]) {
+      const capture: string[] = [];
+      const result = await queryHistory(
+        makeInflux({ capture, rows: [{ _time: "2026-11-16T10:00:00Z", _value: 1, mean: 1 }] }),
+        {
+          equipmentId: "eq-1",
+          alias: "a",
+          from,
+          to,
+          aggregation: "1h",
+          category,
+          rawOnly: true,
+        },
+        logger,
+      );
+      expect(capture).toHaveLength(1);
+      expect(capture[0]).toContain('from(bucket: "sowel")');
+      expect(capture[0]).toContain("aggregateWindow(every: 1h");
+      expect(result.source).toBe("raw");
+    }
+  });
 });

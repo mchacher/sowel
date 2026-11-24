@@ -369,6 +369,12 @@ export async function queryHistory(
      * points returned may be partial. The REST route does not pass it.
      */
     onError?: () => void;
+    /**
+     * Spec 211 FR2.5.6 — aggregate the raw bucket on the fly, never a
+     * downsampled one: for a period the downsampling task may not have
+     * written (or not wholly) yet. The REST route does not pass it.
+     */
+    rawOnly?: boolean;
   },
   logger: Logger,
 ): Promise<HistoryQueryResult> {
@@ -394,7 +400,9 @@ export async function queryHistory(
 
   // Resolve target bucket based on resolution (raw, hourly, or daily)
   // Energy category uses dedicated energy buckets
-  const targetBucket = resolveBucket(config.bucket, resolution, params.category);
+  const targetBucket = params.rawOnly
+    ? config.bucket
+    : resolveBucket(config.bucket, resolution, params.category);
   // Spec 211 FR2.6 — which bucket answered: the stamping depends on it.
   let source: "downsampled" | "raw" = targetBucket !== config.bucket ? "downsampled" : "raw";
 

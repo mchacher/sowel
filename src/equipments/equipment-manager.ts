@@ -239,6 +239,14 @@ export class EquipmentManager {
   }
 
   /** Collect computed data from all registered providers for a given equipment. */
+  /**
+   * Spec 211 — the computed data entries of an equipment alone, without the
+   * bindings, orders and status `getByIdWithDetails` also builds.
+   */
+  getComputedDataFor(equipmentId: string): ComputedDataEntry[] {
+    return this.getComputedData(equipmentId);
+  }
+
   private getComputedData(equipmentId: string): ComputedDataEntry[] {
     const entries: ComputedDataEntry[] = [];
     for (const provider of this.computedDataProviders) {

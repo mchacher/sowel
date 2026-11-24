@@ -544,7 +544,7 @@ if (ctx.helpers.history) {
 - **Creux.** Une période sans échantillon n'a pas de point ; rien n'est complété par des zéros. Les mesures continues portent aussi `min` et `max`.
 - **Bornes.** La fenêtre est ramenée aux 7 derniers jours. `alias` doit être un binding de données ou une donnée calculée de l'équipement ; un binding booléen ou énuméré, un alias inconnu ou une fenêtre invalide répondent `{ points: [], ok: true }` sans requête.
 - **`ok: false`** signifie qu'InfluxDB n'est pas configuré, injoignable ou en échec — pas qu'il n'y a rien à lire. Un résultat partiel n'est jamais renvoyé.
-- **Limite de débit.** Au plus 10 appels atteignant InfluxDB par minute glissante et par instance ; au-delà, la promesse est rejetée avec `Error("history rate limit")`. Un appel par série et par heure close en est très loin. Sur un rejet, gardez ce que vous avez déjà lu et reprenez au tick suivant.
+- **Limite de débit.** Au plus 10 appels atteignant InfluxDB par minute glissante et par instance ; au-delà, la promesse est rejetée avec `Error("history rate limit")`. Un appel lance quelques requêtes Flux (la dernière période complète est toujours lue dans le bucket brut, pour qu'elle ne manque jamais juste après l'heure) ; un appel par série et par heure close reste très loin de la limite. Sur un rejet, gardez ce que vous avez déjà lu et reprenez au tick suivant.
 
 ## Événements de l'Event Bus
 

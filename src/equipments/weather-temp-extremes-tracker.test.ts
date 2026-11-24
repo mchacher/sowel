@@ -26,7 +26,7 @@ function seedDevice(
   db.prepare(
     `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status, integration_id, source_device_id)
      VALUES (?, ?, ?, ?, 'zigbee2mqtt', 'online', 'zigbee2mqtt', ?)`,
-  ).run(deviceId, `z2m/weather`, "Weather", "Weather", "Weather");
+  ).run(deviceId, `z2m/weather`, "Weather", "Weather", deviceId);
 
   const dataIds: string[] = [];
   for (const d of dataKeys) {
@@ -440,5 +440,32 @@ describe("WeatherTempExtremesTracker", () => {
     expect(seen).toEqual(
       expect.arrayContaining(["temperature_min_today", "temperature_max_today"]),
     );
+  });
+
+  it("spec 211 — a binding added after start is tracked (the cache follows equipment.updated)", () => {
+    const eqId = createEquipment("sensor", [
+      { key: "humidity", category: "humidity", alias: "humidity" },
+    ]);
+    startTracker();
+    emitSample(eqId, "humidity", 50); // caches "nothing tracked" for this equipment
+
+    const { dataIds } = seedDevice(db, [{ key: "temperature", category: "temperature" }]);
+    equipmentManager.addDataBinding(eqId, dataIds[0], "temperature");
+    emitSample(eqId, "temperature", 19);
+
+    expect(entriesOf(eqId)).toEqual({ temperature_min_today: 19, temperature_max_today: 19 });
+  });
+
+  it("spec 211 — a weather station retyped to sensor stops showing temperature_2's envelope", () => {
+    const { eqId } = createWeatherEquipment();
+    startTracker();
+    emitSample(eqId, "temperature", 10);
+    emitSample(eqId, "temperature_2", 21);
+    expect(Object.keys(entriesOf(eqId))).toContain("temperature_2_min_today");
+
+    equipmentManager.update(eqId, { type: "sensor" as never });
+
+    // `temperature` is temperature_outdoor here, so it stays tracked.
+    expect(entriesOf(eqId)).toEqual({ temperature_min_today: 10, temperature_max_today: 10 });
   });
 });

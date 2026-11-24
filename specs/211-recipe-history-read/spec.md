@@ -99,12 +99,14 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
       14:00–15:00 at 15:00) would otherwise lose the last complete period;
    5. after FR2.6's normalisation, only the points with `alignedFrom ≤ t < alignedTo` are kept:
       the running period, which the extra period brings in, is stamped `alignedTo` and dropped.
-   6. when a downsampled bucket answered and has no point for the last complete period (the
-      downsampling task writes it a few minutes after the period ends; `queryHistory` only falls
-      back to the raw bucket when the downsampled one returns nothing), that one period is read
-      again, so it comes from the raw bucket — the same call, counted once by FR2.7. Added after
-      review of the implementation: without it, rain and temperature lost their last hour for a
-      few minutes after each hour, exactly when an hourly consumer reads.
+   6. the **last complete period is always read from the raw bucket** (`queryHistory`'s
+      `rawOnly`), the rest of the window as above. A downsampling task writes a closed period a few
+      minutes after it ends, and a rain day is summed from hourly rows: right after the hour a
+      downsampled bucket may lack that period or hold it partially, and `queryHistory` only falls
+      back to raw when the downsampled bucket returns nothing at all. Re-reading that one period
+      through the normal path would not help either: an end-stamped bucket answers that window with
+      the period before. The raw bucket keeps 7 days, which covers it. One recipe call therefore
+      runs one more Flux query; FR2.7 still counts calls. Added after review of the implementation.
 
    So the result holds **complete periods only**, never the running hour or day, and the first
    period is never cut by the 7-day clamp. A recipe that needs local days for energy reads `1h` and
@@ -132,8 +134,10 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
 
 7. **Bounds.** At most **10 calls per rolling minute per instance**, counting only the calls that
    reach Influx (calls answered by FR2.3-FR2.5 are free). Beyond: the promise rejects with
-   `Error("history rate limit")`. One call may run up to 3 Flux queries inside `queryHistory`
-   (downsampled bucket, fallback, union); the limit counts calls, which is what a recipe controls.
+   `Error("history rate limit")`. One call may run up to 4 Flux queries (up to 3 inside
+   `queryHistory` for the window — downsampled bucket, rain fallback, raw fallback — plus the raw
+   read of the last complete period, FR2.5.6); the limit counts calls, which is what a recipe
+   controls.
    Results keep core's existing `limit(n: 500)` for aggregated queries.
 8. **Errors.** `ok` tells an empty answer from an outage:
    - Influx not configured (`isConnected()` false — it means configured, not reachable,
