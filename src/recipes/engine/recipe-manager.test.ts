@@ -12,6 +12,7 @@ import { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import { Recipe } from "./recipe.js";
 import type { SunlightManager } from "../../zones/sunlight-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
+import type { InfluxClient } from "../../core/influx-client.js";
 import type {
   RecipeSlotDef,
   EngineEvent,
@@ -1153,5 +1154,123 @@ describe("RecipeManager × CapacityArbiter (spec 140)", () => {
     manager.createInstance("claimer-after", {});
     expect(denied).toBeUndefined();
     expect(arbiter.getPublicState().pending.map((p) => p.equipmentId)).toContain(pumpId);
+  });
+});
+
+// ============================================================
+// Spec 211 — ctx.helpers.history wiring
+// ============================================================
+
+describe("RecipeManager × ctx.helpers.history (spec 211)", () => {
+  let db: Database.Database;
+  let manager: RecipeManager;
+  let thermoId: string;
+
+  const fakeInflux = {
+    isConnected: () => true,
+    getConfig: () => ({ org: "o", bucket: "sowel" }),
+    getClient: () => ({
+      getQueryApi: () => ({
+        iterateRows: () => ({ async *[Symbol.asyncIterator]() {} }),
+      }),
+    }),
+  } as unknown as InfluxClient;
+
+  function setup(influx: InfluxClient | null): void {
+    db = createTestDb();
+    const eventBus = new EventBus(logger);
+    const zoneManager = new ZoneManager(db, eventBus, logger);
+    const deviceManager = new DeviceManager(db, eventBus, logger);
+    const equipmentManager = new EquipmentManager(
+      db,
+      eventBus,
+      { getById: () => undefined } as never,
+      deviceManager,
+      logger,
+    );
+    const aggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
+    const sunlightManager = {
+      getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight: null }),
+    } as unknown as SunlightManager;
+
+    const zone = zoneManager.create({ name: "Séjour" });
+    thermoId = equipmentManager.create({ name: "Thermo", type: "sensor", zoneId: zone.id }).id;
+    const deviceId = "dev-thermo";
+    db.prepare(
+      `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status, integration_id, source_device_id)
+       VALUES (?, 'z2m/t', 'T', 'T', 'zigbee2mqtt', 'online', 'zigbee2mqtt', 'T')`,
+    ).run(deviceId);
+    db.prepare(
+      `INSERT INTO device_data (id, device_id, key, type, category) VALUES ('dd-t', ?, 'temperature', 'number', 'temperature')`,
+    ).run(deviceId);
+    equipmentManager.addDataBinding(thermoId, "dd-t", "temperature");
+
+    manager = new RecipeManager(
+      db,
+      eventBus,
+      equipmentManager,
+      zoneManager,
+      aggregator,
+      sunlightManager,
+      tariffClassifier,
+      logger,
+      false,
+      null,
+      influx,
+    );
+  }
+
+  afterEach(() => {
+    manager.stopAll();
+    db.close();
+  });
+
+  /** Records the history helper each context received, validate's first. */
+  function registerReader(seen: { validate: unknown[]; instance: unknown[] }): void {
+    manager.registerExternal({
+      id: "reader",
+      name: "reader",
+      description: "reads history",
+      slots: [],
+      validate: (_params, ctx) => {
+        seen.validate.push(ctx.helpers.history);
+      },
+      createInstance: (_params, ctx) => {
+        seen.instance.push(ctx.helpers.history);
+        return { stop: () => {} };
+      },
+    } satisfies RecipeDefinition);
+  }
+
+  it("without an Influx client, ctx.helpers.history is absent", () => {
+    setup(null);
+    const seen = { validate: [] as unknown[], instance: [] as unknown[] };
+    registerReader(seen);
+    manager.createInstance("reader", {});
+    expect(seen.instance[0]).toBeUndefined();
+  });
+
+  it("with an Influx client, ctx.helpers.history.query is a function", () => {
+    setup(fakeInflux);
+    const seen = { validate: [] as unknown[], instance: [] as unknown[] };
+    registerReader(seen);
+    manager.createInstance("reader", {});
+    expect(typeof (seen.instance[0] as { query: unknown }).query).toBe("function");
+  });
+
+  it("the validate() temporary context has its own counter: draining it leaves the instance's budget", async () => {
+    setup(fakeInflux);
+    const seen = { validate: [] as unknown[], instance: [] as unknown[] };
+    registerReader(seen);
+    manager.createInstance("reader", {});
+    type H = { query: (p: unknown) => Promise<unknown> };
+    const tmp = seen.validate[0] as H;
+    const inst = seen.instance[0] as H;
+    expect(tmp).not.toBe(inst);
+
+    const q = { equipmentId: thermoId, alias: "temperature", from: "-24h", aggregation: "1h" };
+    for (let i = 0; i < 10; i++) await tmp.query(q);
+    await expect(tmp.query(q)).rejects.toThrow("history rate limit");
+    await expect(inst.query(q)).resolves.toEqual({ points: [], ok: true });
   });
 });

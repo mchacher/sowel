@@ -215,16 +215,6 @@ describe("WeatherTempExtremesTracker", () => {
     expect(entriesOf(eqId)).toEqual({});
   });
 
-  it("ignores non-weather equipments", () => {
-    const { eqId } = createWeatherEquipment({ type: "sensor" });
-    startTracker();
-    emitSample(eqId, "temperature", 21);
-
-    expect(tracker.getComputedDataForEquipment(eqId)).toEqual([]);
-    const rows = db.prepare(`SELECT * FROM weather_temp_extremes`).all();
-    expect(rows).toHaveLength(0);
-  });
-
   it("ignores bindings whose category is not temperature*", () => {
     const { eqId } = createWeatherEquipment();
     startTracker();
@@ -263,5 +253,192 @@ describe("WeatherTempExtremesTracker", () => {
     expect(tracker.getComputedDataForEquipment(eqId)).toEqual([]);
     const rows = db.prepare(`SELECT * FROM weather_temp_extremes`).all();
     expect(rows).toHaveLength(0);
+  });
+
+  // ── Spec 211 FR1 — every thermometer ────────────────────────────
+
+  function createEquipment(
+    type: string,
+    bindings: { key: string; category: string; alias: string }[],
+  ): string {
+    const zone = zoneManager.create({ name: "Séjour" });
+    const eq = equipmentManager.create({ name: "Eq", type: type as never, zoneId: zone.id });
+    const { dataIds } = seedDevice(
+      db,
+      bindings.map((b) => ({ key: b.key, category: b.category })),
+    );
+    bindings.forEach((b, i) => equipmentManager.addDataBinding(eq.id, dataIds[i], b.alias));
+    return eq.id;
+  }
+
+  function lastUpdatedOf(eqId: string, alias: string): string | null | undefined {
+    return tracker.getComputedDataForEquipment(eqId).find((e) => e.alias === alias)?.lastUpdated;
+  }
+
+  it("spec 211 FR1.1/FR1.2 — a sensor's temperature gets today's extremes", () => {
+    const eqId = createEquipment("sensor", [
+      { key: "temperature", category: "temperature", alias: "temperature" },
+    ]);
+    startTracker();
+    emitSample(eqId, "temperature", 15);
+    emitSample(eqId, "temperature", 18);
+
+    expect(entriesOf(eqId)).toEqual({
+      temperature_min_today: 15,
+      temperature_max_today: 18,
+    });
+    const entry = tracker
+      .getComputedDataForEquipment(eqId)
+      .find((e) => e.alias === "temperature_min_today");
+    expect(entry?.unit).toBe("°C");
+  });
+
+  it("spec 211 FR1.1 — on a sensor only the alias `temperature` is tracked, not `temperature_2`", () => {
+    const eqId = createEquipment("sensor", [
+      { key: "temperature", category: "temperature", alias: "temperature" },
+      { key: "temperature_b", category: "temperature", alias: "temperature_2" },
+    ]);
+    startTracker();
+    emitSample(eqId, "temperature", 20);
+    emitSample(eqId, "temperature_2", 30);
+
+    expect(entriesOf(eqId)).toEqual({
+      temperature_min_today: 20,
+      temperature_max_today: 20,
+    });
+  });
+
+  it("spec 211 FR1.1 — a temperature_outdoor binding is tracked under its own alias", () => {
+    const eqId = createEquipment("sensor", [
+      { key: "temperature", category: "temperature_outdoor", alias: "outdoor" },
+    ]);
+    startTracker();
+    emitSample(eqId, "outdoor", 4);
+    emitSample(eqId, "outdoor", 9.5);
+
+    expect(entriesOf(eqId)).toEqual({ outdoor_min_today: 4, outdoor_max_today: 9.5 });
+    const cats = tracker.getComputedDataForEquipment(eqId).map((e) => e.category);
+    expect(cats).toEqual(["temperature_outdoor", "temperature_outdoor"]);
+  });
+
+  it("spec 211 FR1.1 — a thermostat setpoint is never tracked, its `temperature` reading is", () => {
+    const eqId = createEquipment("thermostat", [
+      { key: "setpoint", category: "temperature", alias: "setpoint" },
+      { key: "temperature", category: "temperature", alias: "temperature" },
+    ]);
+    startTracker();
+    emitSample(eqId, "setpoint", 21);
+    emitSample(eqId, "temperature", 19.5);
+
+    expect(entriesOf(eqId)).toEqual({
+      temperature_min_today: 19.5,
+      temperature_max_today: 19.5,
+    });
+    const rows = db.prepare(`SELECT alias FROM weather_temp_extremes`).all();
+    expect(rows).toEqual([{ alias: "temperature" }]);
+  });
+
+  it("spec 211 FR1.1 — a sensor with humidity only gets nothing", () => {
+    const eqId = createEquipment("sensor", [
+      { key: "humidity", category: "humidity", alias: "humidity" },
+    ]);
+    startTracker();
+    emitSample(eqId, "humidity", 55);
+
+    expect(tracker.getComputedDataForEquipment(eqId)).toEqual([]);
+    expect(db.prepare(`SELECT * FROM weather_temp_extremes`).all()).toHaveLength(0);
+  });
+
+  it("spec 211 FR1.1 — any equipment type follows the rule (light with a temperature binding)", () => {
+    const eqId = createEquipment("light_onoff", [
+      { key: "device_temperature", category: "temperature", alias: "device_temperature" },
+      { key: "temperature", category: "temperature", alias: "temperature" },
+    ]);
+    startTracker();
+    emitSample(eqId, "device_temperature", 45);
+    emitSample(eqId, "temperature", 22);
+
+    expect(entriesOf(eqId)).toEqual({
+      temperature_min_today: 22,
+      temperature_max_today: 22,
+    });
+  });
+
+  it("spec 211 FR1.2 — a sensor sampled yesterday only shows nothing today", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-16T22:00:00"));
+    const eqId = createEquipment("sensor", [
+      { key: "temperature", category: "temperature", alias: "temperature" },
+    ]);
+    startTracker();
+    emitSample(eqId, "temperature", 12);
+
+    vi.setSystemTime(new Date("2026-11-17T07:00:00"));
+    expect(entriesOf(eqId)).toEqual({});
+  });
+
+  it("spec 211 FR1.3 — lastUpdated follows a sample inside the envelope, without a SQLite write", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-17T06:30:00"));
+    const eqId = createEquipment("sensor", [
+      { key: "temperature", category: "temperature", alias: "temperature" },
+    ]);
+    startTracker();
+    emitSample(eqId, "temperature", 3);
+    emitSample(eqId, "temperature", 11);
+    const rowBefore = db.prepare(`SELECT updated_at FROM weather_temp_extremes`).get();
+
+    vi.setSystemTime(new Date("2026-11-17T18:00:00"));
+    emitSample(eqId, "temperature", 7); // inside the envelope
+
+    const at18 = new Date("2026-11-17T18:00:00").toISOString();
+    expect(lastUpdatedOf(eqId, "temperature_min_today")).toBe(at18);
+    expect(lastUpdatedOf(eqId, "temperature_max_today")).toBe(at18);
+    expect(entriesOf(eqId)).toEqual({ temperature_min_today: 3, temperature_max_today: 11 });
+    expect(db.prepare(`SELECT updated_at FROM weather_temp_extremes`).get()).toEqual(rowBefore);
+  });
+
+  it("spec 211 FR1.3 — after a restart lastUpdated is the row's updated_at until the next sample", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-17T06:30:00"));
+    const eqId = createEquipment("sensor", [
+      { key: "temperature", category: "temperature", alias: "temperature" },
+    ]);
+    startTracker();
+    emitSample(eqId, "temperature", 3);
+    vi.setSystemTime(new Date("2026-11-17T09:00:00"));
+    emitSample(eqId, "temperature", 5); // widens the max: row written at 09:00
+    vi.setSystemTime(new Date("2026-11-17T10:00:00"));
+    emitSample(eqId, "temperature", 4); // inside, memory only
+    tracker.stop();
+
+    vi.setSystemTime(new Date("2026-11-17T12:00:00"));
+    tracker = new WeatherTempExtremesTracker(db, eventBus, equipmentManager, logger);
+    tracker.start();
+    const at09 = new Date("2026-11-17T09:00:00").toISOString();
+    expect(lastUpdatedOf(eqId, "temperature_min_today")).toBe(at09);
+    expect(entriesOf(eqId)).toEqual({ temperature_min_today: 3, temperature_max_today: 5 });
+
+    vi.setSystemTime(new Date("2026-11-17T12:05:00"));
+    emitSample(eqId, "temperature", 4.5);
+    expect(lastUpdatedOf(eqId, "temperature_min_today")).toBe(
+      new Date("2026-11-17T12:05:00").toISOString(),
+    );
+  });
+
+  it("spec 211 FR1.5 — a sensor's extremes are emitted as equipment.data.changed", () => {
+    const eqId = createEquipment("sensor", [
+      { key: "temperature", category: "temperature", alias: "temperature" },
+    ]);
+    startTracker();
+    const seen: string[] = [];
+    eventBus.on((e) => {
+      if (e.type === "equipment.data.changed" && e.equipmentId === eqId) seen.push(e.alias);
+    });
+    emitSample(eqId, "temperature", 17);
+
+    expect(seen).toEqual(
+      expect.arrayContaining(["temperature_min_today", "temperature_max_today"]),
+    );
   });
 });

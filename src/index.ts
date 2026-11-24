@@ -295,8 +295,9 @@ async function main() {
     poolWaterTempTracker.getComputedDataForEquipment(eqId),
   );
 
-  // 9d. Weather temp extremes tracker (spec 134) — daily min/max per temperature
-  // binding on weather equipments, exposed as computed data.
+  // 9d. Temp extremes tracker (spec 134, widened by spec 211) — daily min/max
+  // per thermometer binding (weather stations and any room/outdoor reading),
+  // exposed as computed data.
   const weatherTempExtremesTracker = new WeatherTempExtremesTracker(
     db,
     eventBus,
@@ -499,6 +500,7 @@ async function main() {
     logger,
     config.shadowMode, // spec 124 — runtime gate on startInstance
     capacityArbiter, // spec 140 — ctx.helpers.energy claims
+    influxClient, // spec 211 — read-only ctx.helpers.history
   );
   // All recipes are now external packages loaded by RecipeLoader
 

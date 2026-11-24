@@ -571,6 +571,8 @@ export interface HistoryQueryResult {
   points: HistoryPoint[];
   resolution: "raw" | "1h" | "1d";
   dataType?: string; // "number" | "boolean" | "enum" — helps frontend choose chart style
+  /** Spec 211 FR2.6 — which bucket answered (`queryHistory` only; not sent by the REST route). */
+  source?: "downsampled" | "raw";
 }
 
 export interface OrderBinding {
@@ -931,6 +933,38 @@ export interface RecipeHelpers {
   /** Spec 214 — publish the data this recipe declares in `publishes`.
    *  Absent on an older core. */
   equipmentData: RecipeEquipmentDataHelpers;
+  /** Spec 211 — read the history Sowel keeps, read-only and bounded.
+   *  Optional: absent on an older core, and when InfluxDB is not wired. */
+  history?: RecipeHistory;
+}
+
+/** Spec 211 FR2.2 — parameters of `ctx.helpers.history.query`. */
+export interface RecipeHistoryQuery {
+  equipmentId: string;
+  /** A data binding of the equipment, or one of its computed data entries. */
+  alias: string;
+  /** ISO-8601 or relative (`-30m`, `-24h`, `-7d`). Clamped to the last 7 days. */
+  from: string;
+  /** Same forms (a relative `to` exists on the recipe path only). Defaults to now. */
+  to?: string;
+  aggregation: "1h" | "1d";
+}
+
+/**
+ * Spec 211 FR2.2 — complete periods only, each stamped at its start (UTC
+ * ISO-8601), sparse. `ok: false` means InfluxDB is not configured or failed;
+ * `ok: true` with no points means there is nothing to read.
+ */
+export interface RecipeHistoryResult {
+  points: HistoryPoint[];
+  ok: boolean;
+}
+
+/** Spec 211 FR2 — `ctx.helpers.history`. */
+export interface RecipeHistory {
+  /** Rejects with `Error("history rate limit")` beyond 10 calls reaching
+   *  InfluxDB per rolling minute; never throws otherwise. */
+  query(params: RecipeHistoryQuery): Promise<RecipeHistoryResult>;
 }
 
 /** Spec 214 — the per-instance publishing channel. */

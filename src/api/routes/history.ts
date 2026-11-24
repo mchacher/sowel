@@ -249,7 +249,8 @@ export function registerHistoryRoutes(
       logger,
     );
 
-    return { ...result, dataType, category };
+    // `source` (spec 211) is for the recipe path only: the payload is unchanged.
+    return { points: result.points, resolution: result.resolution, dataType, category };
   });
 
   logger.debug("History routes registered");

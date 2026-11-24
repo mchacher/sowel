@@ -1,6 +1,6 @@
 # Spec 211 — Today's extremes for every thermometer, and history for recipes
 
-**Status**: Draft 2026-11-17, revised after review the same day.
+**Status**: Implemented 2026-11-24 (draft 2026-11-17, revised after review the same day).
 
 ## Context
 

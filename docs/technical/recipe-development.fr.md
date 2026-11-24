@@ -389,6 +389,14 @@ L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :
 
 Envoyez les ordres avec `ctx.dispatchOrder`, pas `ctx.equipmentManager.executeOrder` : seul le premier dit à Sowel quelle recette a envoyé l'ordre, ce qui permet au journal d'activité de la nommer (issue #1122).
 
+### Extrêmes du jour d'un thermomètre (spec 211)
+
+Tout thermomètre porte le minimum et le maximum du jour en données calculées, `<alias>_min_today` et `<alias>_max_today` (°C), lues comme n'importe quelle valeur de l'équipement. Elles repartent à minuit heure locale et sont absentes jusqu'au premier échantillon du jour.
+
+- **Quels bindings.** Sur une station `weather`, tout binding de température (spec 134). Sur tout autre équipement, la mesure d'alias `temperature` (catégorie `temperature`, celle dont la zone fait la moyenne — une consigne ne compte jamais) et tout binding `temperature_outdoor`.
+- **`lastUpdated`** est l'instant du dernier échantillon intégré à l'enveloppe, même s'il ne l'a pas élargie : un minimum atteint à 06:30 reste frais à 18:00 tant que la sonde émet.
+- **Événements.** Les deux entrées sont émises en `equipment.data.changed`. Une recette qui réagit à chaque changement d'un capteur doit filtrer sur l'alias qu'elle surveille.
+
 ## Helpers partagés
 
 Les packages de recettes accèdent aux utilitaires partagés via `ctx.helpers` (interface `RecipeHelpers` dans `src/shared/types.ts`) :
@@ -401,6 +409,7 @@ Les packages de recettes accèdent aux utilitaires partagés via `ctx.helpers` (
 | `getTariff()`                                                                  | Programmation tarifaire (spec 138), voir ci-dessous     |
 | `energy.claimCapacity()` / `energy.getCapacityState()`                         | Demandes de surplus solaire (spec 140), voir ci-dessous |
 | `equipmentData.publish()`                                                      | Donnée sur un équipement (spec 214), voir plus haut     |
+| `history?.query()`                                                             | Lire l'historique de Sowel (spec 211), voir ci-dessous  |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` retourne les heures de soleil courantes (`"HH:MM"`, offsets spec 023 appliqués). À coupler avec l'événement `sunlight.changed` pour se resynchroniser d'un jour à l'autre ; les champs sont `null` tant que les heures ne sont pas calculées ou sans coordonnées maison.
 
@@ -512,6 +521,30 @@ Règles pour les auteurs (spec 140, tenues par convention et auditées par le co
    vite. Une plage avec `minW` ≤ 0, `maxW` < `minW` ou `stepW` ≤ 0 est refusée
    `invalid-modulation`. Une baisse que la charge ne suit pas est journalisée
    `budget-not-honored`.
+
+### `history` — lire l'historique (spec 211)
+
+`ctx.helpers.history.query({ equipmentId, alias, from, to?, aggregation })` lit les agrégats horaires ou journaliers que Sowel garde déjà dans InfluxDB, en lecture seule. Préférez-le à un échantillonnage maison : ce sont les chiffres que montrent les graphiques.
+
+```typescript
+if (ctx.helpers.history) {
+  const { points, ok } = await ctx.helpers.history.query({
+    equipmentId: meterId,
+    alias: "energy",
+    from: "-25h", // ISO-8601 ou relatif : -30m, -24h, -7d
+    aggregation: "1h", // "1h" ou "1d" uniquement
+  });
+  // points : [{ time: "2026-11-17T14:00:00.000Z", value: 320 }, ...]
+}
+```
+
+- **Optionnel.** Absent sur un cœur plus ancien et quand InfluxDB n'est pas branché : testez d'abord `ctx.helpers.history`.
+- **Périodes complètes seulement, horodatées à leur début** (ISO-8601 UTC), quelle que soit la catégorie : le point `14:00` est l'heure 14:00–15:00. L'heure ou le jour en cours n'est jamais renvoyé, donc `-24h` à 15:42 donne 23 heures (16:00 la veille à 14:00 aujourd'hui) ; demandez `-25h` pour en avoir 24.
+- **Jours.** `1d` coupe la pluie à minuit heure locale, l'énergie et les mesures continues (température…) à minuit UTC. Pour l'énergie par jour local, lisez `1h` et gardez les heures voulues. Un point journalier de température n'est daté de son jour UTC qu'approximativement : pour les extrêmes du jour, lisez `<alias>_min_today` / `_max_today`, jamais l'historique `1d`.
+- **Creux.** Une période sans échantillon n'a pas de point ; rien n'est complété par des zéros. Les mesures continues portent aussi `min` et `max`.
+- **Bornes.** La fenêtre est ramenée aux 7 derniers jours. `alias` doit être un binding de données ou une donnée calculée de l'équipement ; un binding booléen ou énuméré, un alias inconnu ou une fenêtre invalide répondent `{ points: [], ok: true }` sans requête.
+- **`ok: false`** signifie qu'InfluxDB n'est pas configuré, injoignable ou en échec — pas qu'il n'y a rien à lire. Un résultat partiel n'est jamais renvoyé.
+- **Limite de débit.** Au plus 10 appels atteignant InfluxDB par minute glissante et par instance ; au-delà, la promesse est rejetée avec `Error("history rate limit")`. Un appel par série et par heure close en est très loin. Sur un rejet, gardez ce que vous avez déjà lu et reprenez au tick suivant.
 
 ## Événements de l'Event Bus
 

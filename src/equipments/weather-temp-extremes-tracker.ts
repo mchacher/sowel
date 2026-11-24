@@ -1,9 +1,10 @@
 /**
- * Weather daily temperature extremes tracker (spec 134).
+ * Daily temperature extremes tracker (spec 134, widened by spec 211).
  *
- * Tracks, per `weather` equipment and per temperature binding, the minimum
- * and maximum value observed since local midnight, and exposes them as
- * computed data entries `<alias>_min_today` / `<alias>_max_today`.
+ * Tracks, per thermometer binding, the minimum and maximum value observed
+ * since local midnight, and exposes them as computed data entries
+ * `<alias>_min_today` / `<alias>_max_today`. Which bindings: see `isTracked`.
+ * The class keeps its spec 134 name; it is no longer `weather`-only.
  *
  * Vendor-agnostic by design: some stations (Netatmo) report daily min/max
  * themselves, most don't — Sowel derives the envelope from the temperature
@@ -38,6 +39,12 @@ interface Envelope {
   max: number;
   category: DataCategory;
   updatedAt: string;
+  /**
+   * Spec 211 FR1.3 — instant of the last sample integrated into the envelope,
+   * even one that did not widen it. In memory only (no SQLite write per
+   * sample); empty after a reload, when `updatedAt` stands in for it.
+   */
+  lastSampleAt?: string;
 }
 
 const TRACKED_CATEGORIES = new Set<DataCategory>(["temperature", "temperature_outdoor"]);
@@ -46,6 +53,22 @@ const TRACKED_CATEGORIES = new Set<DataCategory>(["temperature", "temperature_ou
 // function drifted apart once before (the spec 061 timezone bugs), and a fix
 // landing in one and not the others is precisely how they did.
 const localDay = localDateStr;
+
+/**
+ * Spec 211 FR1.1 — which bindings get today's extremes.
+ * - `weather`: every binding of a spec 134 category, as before.
+ * - any other type: what the core already treats as a room temperature
+ *   (category `temperature` with alias `temperature`, the zone aggregator's
+ *   rule — a setpoint never matches), plus any `temperature_outdoor` binding.
+ */
+export function isTracked(
+  equipmentType: string,
+  binding: { alias: string; category: DataCategory },
+): boolean {
+  if (equipmentType === "weather") return TRACKED_CATEGORIES.has(binding.category);
+  if (binding.category === "temperature_outdoor") return true;
+  return binding.category === "temperature" && binding.alias === "temperature";
+}
 
 export class WeatherTempExtremesTracker {
   private readonly db: Database.Database;
@@ -116,13 +139,13 @@ export class WeatherTempExtremesTracker {
   }
 
   /**
-   * ComputedDataProvider entry — daily extremes for `weather` equipments.
+   * ComputedDataProvider entry — daily extremes of the tracked bindings.
    * Rows from past days are hidden (pre-first-sample mornings show nothing
    * rather than yesterday's envelope).
    */
   getComputedDataForEquipment(equipmentId: string): ComputedDataEntry[] {
     const eq = this.equipmentManager.getById(equipmentId);
-    if (!eq || eq.type !== "weather") return [];
+    if (!eq) return [];
     const perAlias = this.state.get(equipmentId);
     if (!perAlias) return [];
 
@@ -130,20 +153,21 @@ export class WeatherTempExtremesTracker {
     const entries: ComputedDataEntry[] = [];
     for (const [alias, env] of perAlias) {
       if (env.day !== today) continue;
+      const lastUpdated = env.lastSampleAt ?? env.updatedAt;
       entries.push(
         {
           alias: `${alias}_min_today`,
           value: env.min,
           unit: "°C",
           category: env.category,
-          lastUpdated: env.updatedAt,
+          lastUpdated,
         },
         {
           alias: `${alias}_max_today`,
           value: env.max,
           unit: "°C",
           category: env.category,
-          lastUpdated: env.updatedAt,
+          lastUpdated,
         },
       );
     }
@@ -158,12 +182,12 @@ export class WeatherTempExtremesTracker {
     if (alias.endsWith("_min_today") || alias.endsWith("_max_today")) return;
 
     const eq = this.equipmentManager.getById(equipmentId);
-    if (!eq || eq.type !== "weather") return;
+    if (!eq) return;
 
     const binding = this.equipmentManager
       .getDataBindingsWithValues(equipmentId)
       .find((b) => b.alias === alias);
-    if (!binding || !TRACKED_CATEGORIES.has(binding.category)) return;
+    if (!binding || !isTracked(eq.type, binding)) return;
 
     const now = new Date();
     const today = localDay(now);
@@ -179,16 +203,28 @@ export class WeatherTempExtremesTracker {
     let env: Envelope;
     if (!current || current.day !== today) {
       // First sample of the day (or of ever): the envelope starts here.
-      env = { day: today, min: value, max: value, category: binding.category, updatedAt };
+      env = {
+        day: today,
+        min: value,
+        max: value,
+        category: binding.category,
+        updatedAt,
+        lastSampleAt: updatedAt,
+      };
     } else if (value < current.min || value > current.max) {
       env = {
         ...current,
         min: Math.min(current.min, value),
         max: Math.max(current.max, value),
         updatedAt,
+        lastSampleAt: updatedAt,
       };
     } else {
-      return; // inside the envelope — nothing to update or persist
+      // Inside the envelope: nothing to persist, but the entries' lastUpdated
+      // follows the sample (spec 211 FR1.3), so a minimum reached at 06:30
+      // does not read as stale at 18:00.
+      current.lastSampleAt = updatedAt;
+      return;
     }
 
     perAlias.set(alias, env);

@@ -1,6 +1,6 @@
 # Implementation Plan — Spec 211
 
-**Status**: Draft 2026-11-17, revised after review — awaiting approval.
+**Status**: Implemented 2026-11-24.
 
 ## Slices
 

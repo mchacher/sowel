@@ -40,6 +40,8 @@ function makeInflux(options: {
   throwWhen?: (flux: string) => boolean;
   /** Yield the first row, then throw, for the queries this predicate matches. */
   failAfterFirstRowWhen?: (flux: string) => boolean;
+  /** Per-query rows: when it returns an array, that array replaces `rows`. */
+  rowsFor?: (flux: string) => Record<string, unknown>[] | undefined;
 }): InfluxClient {
   const {
     rows = [],
@@ -49,13 +51,14 @@ function makeInflux(options: {
     throwOnQuery = false,
     throwWhen,
     failAfterFirstRowWhen,
+    rowsFor,
   } = options;
 
   const queryApi = {
     iterateRows(flux: string) {
       capture?.push(flux);
       if (throwOnQuery || throwWhen?.(flux)) throw new Error("influx boom");
-      const out = lastRows && flux.includes("|> last()") ? lastRows : rows;
+      const out = rowsFor?.(flux) ?? (lastRows && flux.includes("|> last()") ? lastRows : rows);
       const failMidway = failAfterFirstRowWhen?.(flux) ?? false;
       return {
         async *[Symbol.asyncIterator]() {
@@ -743,5 +746,123 @@ describe("rain-hourly bucket (spec 186)", () => {
     expect(capture[1]).toContain('from(bucket: "sowel-hourly")');
     expect(capture[1]).not.toContain("rain-hourly");
     expect(res.points).toEqual([{ time: "2026-09-01T22:00:00Z", value: 2.1 }]);
+  });
+});
+
+describe("queryHistory — spec 211 (source, onError)", () => {
+  const from = "2026-11-16T00:00:00Z";
+  const to = "2026-11-17T00:00:00Z";
+  const fromDownsampled = (flux: string) => flux.includes('bucket: "sowel-');
+
+  it("spec 211 FR2.6 — source is `downsampled` when the downsampled bucket answered", async () => {
+    const influx = makeInflux({ rows: [{ _time: "2026-11-16T10:00:00Z", mean: 19 }] });
+    const result = await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "temperature", from, to, aggregation: "1h" },
+      logger,
+    );
+    expect(result.source).toBe("downsampled");
+  });
+
+  it("spec 211 FR2.6 — source is `raw` on the raw fallback (continuous)", async () => {
+    const influx = makeInflux({
+      rowsFor: (flux) =>
+        fromDownsampled(flux) ? [] : [{ _time: "2026-11-16T10:00:00Z", mean: 19 }],
+    });
+    const result = await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "temperature", from, to, aggregation: "1h" },
+      logger,
+    );
+    expect(result.points).toHaveLength(1);
+    expect(result.source).toBe("raw");
+  });
+
+  it("spec 211 FR2.6 — source is `raw` on the raw fallback (energy)", async () => {
+    const influx = makeInflux({
+      rowsFor: (flux) =>
+        fromDownsampled(flux) ? [] : [{ _time: "2026-11-16T10:00:00Z", _value: 120 }],
+    });
+    const result = await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "energy", from, to, aggregation: "1h", category: "energy" },
+      logger,
+    );
+    expect(result.points).toEqual([{ time: "2026-11-16T10:00:00Z", value: 120 }]);
+    expect(result.source).toBe("raw");
+  });
+
+  it("spec 211 FR2.6 — source is `downsampled` for rain read from the hourly buckets", async () => {
+    const influx = makeInflux({ rows: [{ _time: "2026-11-16T10:00:00Z", _value: 0.4 }] });
+    const result = await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "rain", from, to, aggregation: "1h", category: "rain" },
+      logger,
+    );
+    expect(result.source).toBe("downsampled");
+  });
+
+  it('spec 211 FR2.6 — the energy downsampled read still filters `_field == "mean"` (pre-existing defect, FR2.9)', async () => {
+    // Whoever fixes the energy-bucket field mismatch must revisit spec 211
+    // FR2.6's (category, source) table: recipes' buckets must not shift.
+    const capture: string[] = [];
+    await queryHistory(
+      makeInflux({ capture }),
+      { equipmentId: "eq-1", alias: "energy", from, to, aggregation: "1h", category: "energy" },
+      logger,
+    );
+    expect(capture[0]).toContain('from(bucket: "sowel-energy-hourly")');
+    expect(capture[0]).toContain('r._field == "mean"');
+  });
+
+  it("spec 211 FR2.8 — onError is called when a query fails, even with partial points", async () => {
+    let errors = 0;
+    const influx = makeInflux({
+      rows: [
+        { _time: "2026-11-16T10:00:00Z", mean: 19 },
+        { _time: "2026-11-16T11:00:00Z", mean: 20 },
+      ],
+      failAfterFirstRowWhen: () => true,
+    });
+    const result = await queryHistory(
+      influx,
+      {
+        equipmentId: "eq-1",
+        alias: "temperature",
+        from,
+        to,
+        aggregation: "1h",
+        onError: () => errors++,
+      },
+      logger,
+    );
+    expect(result.points).toHaveLength(1); // partial
+    expect(errors).toBe(1);
+  });
+
+  it("spec 211 FR2.8 — without onError (REST route) a failure is still swallowed", async () => {
+    const result = await queryHistory(
+      makeInflux({ throwOnQuery: true }),
+      { equipmentId: "eq-1", alias: "temperature", from, to, aggregation: "1h" },
+      logger,
+    );
+    expect(result.points).toEqual([]);
+  });
+
+  it("spec 211 FR2.8 — a successful query never calls onError", async () => {
+    let errors = 0;
+    await queryHistory(
+      makeInflux({ rows: [{ _time: "2026-11-16T10:00:00Z", mean: 19 }] }),
+      {
+        equipmentId: "eq-1",
+        alias: "temperature",
+        from,
+        to,
+        aggregation: "1h",
+        onError: () => errors++,
+      },
+      logger,
+    );
+    expect(errors).toBe(0);
   });
 });
