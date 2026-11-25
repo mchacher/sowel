@@ -1,5 +1,6 @@
 import type { EquipmentWithDetails } from "../../types";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
+import { isHeaterRunning, resolveHeaterState } from "../../lib/heater-contract";
 import { relayStateOn } from "./bindingUtils";
 import { evChargerStateOf } from "./evChargerState";
 import { electricVehicleStateOf } from "./electricVehicleState";
@@ -23,10 +24,10 @@ export function isRunning(equipment: EquipmentWithDetails): boolean {
     case "pool_pump":
     case "water_heater":
       return relayStateOn(bindings);
-    // Pilot wire: the relay off lets the radiator heat (comfort), as its badge
-    // says — with no state reading too, where the badge reads « Confort ».
+    // Spec 216 — the comfort modes, or the relay off on a relay wiring (with no
+    // state reading too, where the badge reads « Confort »).
     case "heater":
-      return !relayStateOn(bindings);
+      return isHeaterRunning(resolveHeaterState(bindings, equipment.orderBindings));
     case "thermostat":
       return thermostatPowerStateBinding(bindings)?.value === true;
     case "pool_heat_pump": {

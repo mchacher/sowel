@@ -104,3 +104,20 @@ describe("isRunning (spec 208)", () => {
     expect(isRunning(eq("switch"))).toBe(false);
   });
 });
+
+describe("isRunning — heater (spec 216)", () => {
+  it("runs in the comfort modes only, whatever its state says", () => {
+    const pilot = (value: unknown) =>
+      isRunning(eq("heater", [state(false), binding("m", value, "pilot_wire_mode", "enum")]));
+    for (const m of ["comfort", "comfort_minus_1", "comfort_minus_2"]) expect(pilot(m)).toBe(true);
+    for (const m of ["eco", "frost_protection", "off", null, "boost"]) {
+      expect(pilot(m)).toBe(false);
+    }
+  });
+
+  it("keeps the relay rule", () => {
+    expect(isRunning(eq("heater", [state(false)]))).toBe(true);
+    expect(isRunning(eq("heater", [state(true)]))).toBe(false);
+    expect(isRunning(eq("heater"))).toBe(true);
+  });
+});

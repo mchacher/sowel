@@ -16,6 +16,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X, Palette, SlidersHorizontal } from "lucide-react";
 import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren } from "../../types";
 import { EquipmentWidget } from "./EquipmentWidget";
+import { isRunning } from "../equipments/equipment-running";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { ZoneWidget } from "./ZoneWidget";
 import { IconPicker } from "./IconPicker";
@@ -641,6 +642,11 @@ export function MobileZoneCard({
       for (const eq of filtered) {
         const temp = eq.dataBindings.find((b) => b.alias === "temperature");
         if (temp && typeof temp.value === "number") temps.push(temp.value);
+        // Spec 216 — a heater is warm in its comfort modes.
+        if (eq.type === "heater") {
+          if (isRunning(eq)) anyOn = true;
+          continue;
+        }
         const power = thermostatPowerStateBinding(eq.dataBindings);
         if (power?.value === true) anyOn = true;
       }

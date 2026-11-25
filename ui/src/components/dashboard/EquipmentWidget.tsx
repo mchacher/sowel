@@ -18,6 +18,8 @@ import {
   EvCharger,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { heaterModeKey, heaterModeTint } from "../equipments/heaterMode";
+import { isHeaterRunning, resolveHeaterState } from "../../lib/heater-contract";
 import { VmcControl } from "../equipments/VmcControl";
 import { EvVehicleBadge } from "../equipments/EvChargerControl";
 import { evChargerStateOf } from "../equipments/evChargerState";
@@ -228,6 +230,7 @@ function EquipmentWidgetBody({
         sublabel={sublabel}
         equipment={equipment}
         onExecuteOrder={execOrder}
+        onOpenDetail={onOpenDetail}
         iconKey={widget.icon}
         editMode={editMode}
       />
@@ -1074,7 +1077,7 @@ function GateEquipmentWidget({
 }
 
 // ============================================================
-// Heater equipment widget (fil pilote: relay ON = eco, OFF = comfort)
+// Heater equipment widget (relay: ON = eco, OFF = comfort; pilot wire: spec 216)
 // ============================================================
 
 function HeaterEquipmentWidget({
@@ -1082,6 +1085,7 @@ function HeaterEquipmentWidget({
   sublabel,
   equipment,
   onExecuteOrder,
+  onOpenDetail,
   iconKey,
   editMode,
 }: {
@@ -1089,6 +1093,8 @@ function HeaterEquipmentWidget({
   sublabel?: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  /** A pilot-wire tile opens its sheet: six modes have no opposite to toggle to. */
+  onOpenDetail?: () => void;
   iconKey?: string;
   /** Edit mode disables the tap-to-toggle so the tile can be dragged and renamed. */
   editMode?: boolean;
@@ -1096,13 +1102,9 @@ function HeaterEquipmentWidget({
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
 
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" || db.category === "light_state",
-  );
-  const isOn = stateBinding
-    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
-    : false;
-  const isComfort = !isOn;
+  const state = resolveHeaterState(equipment.dataBindings, equipment.orderBindings);
+  const isComfort = isHeaterRunning(state);
+  const isPilot = state.wiring === "pilot";
 
   const toggleBinding = equipment.orderBindings.find(
     (ob) => ob.alias === "state" && (ob.type === "enum" || ob.type === "boolean"),
@@ -1115,32 +1117,28 @@ function HeaterEquipmentWidget({
     try {
       const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
       const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value = isOn ? offVal : onVal;
+      const value = state.mode === "eco" ? offVal : onVal;
       await onExecuteOrder("state", value);
     } finally {
       setExecuting(false);
     }
   };
 
-  const canToggle = hasToggle && equipment.enabled;
+  const canToggle = !isPilot && hasToggle && equipment.enabled;
+
+  const onTap = isPilot ? onOpenDetail : canToggle ? () => void handleToggle() : undefined;
 
   return (
-    <WidgetCard
-      label={label}
-      sublabel={sublabel}
-      onClick={canToggle && !editMode ? () => void handleToggle() : undefined}
-    >
+    <WidgetCard label={label} sublabel={sublabel} onClick={editMode ? undefined : onTap}>
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
         {renderWidgetStateIcon(iconKey, <HeaterWidgetIcon comfort={isComfort} />)}
         <div className="pl-2">
           <span
-            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-              isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"
-            }`}
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${heaterModeTint(state)}`}
           >
-            {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
+            {t(heaterModeKey(state.mode))}
           </span>
         </div>
       </div>

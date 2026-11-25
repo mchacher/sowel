@@ -40,6 +40,7 @@ import {
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import { resolveFreshnessBudget } from "../shared/reading-freshness.js";
 import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
+import { HEATER_CATEGORY_ALIASES, pilotWireBindingKeys } from "../shared/heater-contract.js";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-contract.js";
 import type { Device } from "../shared/types.js";
@@ -53,12 +54,13 @@ import {
 } from "./recipe-outputs.js";
 
 /**
- * Equipment types whose contract binds points by category (specs 182, 183):
+ * Equipment types whose contract binds points by category (specs 182, 183, 216):
  * category → contract alias, applied first on auto-binding.
  */
 const CONTRACT_CATEGORY_ALIASES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   ev_charger: EV_CHARGER_CATEGORY_ALIASES,
   electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
+  heater: HEATER_CATEGORY_ALIASES,
 };
 
 /** A function that returns computed data entries for a given equipment. */
@@ -503,14 +505,20 @@ export class EquipmentManager {
         }
       };
 
+      // Spec 216 — a pilot-wire heater binds its mode and metering only.
+      const pilot =
+        input.type === "heater" ? pilotWireBindingKeys(device.data, device.orders) : null;
+
       // Bind all device data (sensors/state)
       for (const data of contractFirst(device.data)) {
+        if (pilot && !pilot.dataKeys.includes(data.key)) continue;
         const alias = vmcAlias[data.key] ?? contractAlias(data.category) ?? data.key;
         bindWithFallback((a) => this.addDataBinding(equipment.id, data.id, a), alias, data.key);
       }
 
       // Bind all device orders (commands)
       for (const order of contractFirst(device.orders)) {
+        if (pilot && !pilot.orderKeys.includes(order.key)) continue;
         const alias =
           input.type === "gate"
             ? "command"

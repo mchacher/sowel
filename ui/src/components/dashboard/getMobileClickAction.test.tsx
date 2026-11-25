@@ -390,3 +390,22 @@ describe("mobile tap table (spec 196)", () => {
     expect(onExecuteOrder).not.toHaveBeenCalled();
   });
 });
+
+// Spec 216 — a pilot-wire heater opens its sheet, never toggles.
+it("opens the sheet of a pilot-wire heater", () => {
+  const onOpenDetail = vi.fn();
+  const onExecuteOrder = vi.fn();
+  const action = getMobileClickAction(
+    { id: "w-h", type: "equipment", equipmentId: "sw-1" } as DashboardWidget,
+    makeSwitch({
+      type: "heater",
+      orderBindings: [
+        { alias: "wire", category: "set_pilot_wire_mode", type: "enum" },
+      ] as unknown as EquipmentWithDetails["orderBindings"],
+    }),
+    t,
+    onExecuteOrder,
+    onOpenDetail,
+  );
+  expect(action).toEqual({ kind: "sheet", run: onOpenDetail });
+});

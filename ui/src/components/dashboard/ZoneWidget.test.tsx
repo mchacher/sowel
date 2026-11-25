@@ -146,3 +146,36 @@ describe("zone heating setpoint", () => {
     expect(screen.queryByTestId("setpoint-pending")).toBeNull();
   });
 });
+
+// Spec 216 — a heater warms the zone in its comfort modes, and never drives the
+// thermostats' on/off button.
+describe("zone heating with heaters", () => {
+  const heater = (alias: string, category: string, value: unknown) =>
+    ({
+      ...thermostat("h", 20),
+      type: "heater",
+      dataBindings: [{ alias, category, value }],
+      orderBindings: [],
+    }) as unknown as EquipmentWithDetails;
+  const relay = (on: boolean) => heater("state", "light_state", on);
+  const pilot = (mode: string) => heater("pilot_wire_mode", "pilot_wire_mode", mode);
+
+  it.each([
+    ["relay comfort", relay(false), true],
+    ["relay eco", relay(true), false],
+    ["pilot comfort", pilot("comfort_minus_1"), true],
+    ["pilot eco", pilot("eco"), false],
+  ])("%s", (_n, eq, warm) => {
+    const tile = render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[eq]} />);
+    expect(tile.container.querySelector("svg.text-heat") !== null).toBe(warm);
+    tile.unmount();
+  });
+
+  it("still turns the thermostats on when only a heater is warm", () => {
+    vi.mocked(api.executeZoneOrder).mockResolvedValue(undefined as never);
+    const off = thermostat("a", 20);
+    render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[off, pilot("comfort")]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Turn on" }));
+    expect(api.executeZoneOrder).toHaveBeenCalledWith("z1", "allThermostatsPowerOn", undefined);
+  });
+});

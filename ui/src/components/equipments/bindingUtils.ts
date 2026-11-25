@@ -21,6 +21,7 @@ import {
   computeBindingCandidates,
   isDoorEndStateData,
 } from "../../lib/binding-candidates";
+import { HEATER_CATEGORY_ALIASES, pilotWireBindingKeys } from "../../lib/heater-contract";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../../lib/ev-charger-contract";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../../lib/electric-vehicle-contract";
 import { resolveHistorize } from "../../lib/history-defaults";
@@ -185,7 +186,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   // gate auto-binding is candidate-based (spec 150); this entry only feeds the
   // manual AddBindingModal suggestions.
   gate: ["generic", "contact_door"],
-  heater: ["generic", "light_state"],
+  heater: ["generic", "light_state", "pilot_wire_mode"],
   // Spec 135 — water heater: on/off relay (light_state) + optional water
   // temperature (aliased water_temperature so it stays out of the zone room
   // average) + optional power/energy when the relay meters consumption.
@@ -350,6 +351,8 @@ const RELEVANT_ORDER_CATEGORIES: Partial<Record<EquipmentType, OrderCategory[]>>
   camera: ["set_camera_monitoring"],
   // Spec 182 — start/stop and the charging current, whatever the plugin's keys.
   ev_charger: ["toggle_power", "light_toggle", "set_ev_charge_current"],
+  // Spec 216 — the pilot-wire mode, whatever the plugin's key.
+  heater: ["set_pilot_wire_mode"],
   // Spec 183 — wake, start a charge, set the car's charge limit.
   electric_vehicle: ["ev_wake", "ev_charge_start", "set_ev_charge_limit", "ev_refresh"],
 };
@@ -476,12 +479,15 @@ const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string
   ev_charger: EV_CHARGER_CATEGORY_ALIASES,
   // Spec 183 — the electric vehicle contract.
   electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
+  // Spec 216 — the heater contract.
+  heater: HEATER_CATEGORY_ALIASES,
 };
 
-/** Types whose contract points bind first (specs 182, 183). */
+/** Types whose contract points bind first (specs 182, 183, 216). */
 const CONTRACT_FIRST_TYPES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   ev_charger: EV_CHARGER_CATEGORY_ALIASES,
   electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
+  heater: HEATER_CATEGORY_ALIASES,
 };
 
 /**
@@ -720,8 +726,14 @@ export function computeBindingPlan(
             ...items.filter((i) => !(i.category && contractMap[i.category])),
           ]
         : [...items];
+    // Spec 216 — a pilot-wire heater binds its mode and metering only.
+    const pilot =
+      equipmentType === "heater" ? pilotWireBindingKeys(device.data, device.orders) : null;
     for (const data of contractFirst(device.data)) {
-      if (!isRelevantData(data.category, equipmentType)) continue;
+      const relevant = pilot
+        ? pilot.dataKeys.includes(data.key)
+        : isRelevantData(data.category, equipmentType);
+      if (!relevant) continue;
       pushData(
         device,
         data,
@@ -729,7 +741,10 @@ export function computeBindingPlan(
       );
     }
     for (const order of contractFirst(device.orders)) {
-      if (!isRelevantOrder(order.key, equipmentType, order.category)) continue;
+      const relevant = pilot
+        ? pilot.orderKeys.includes(order.key)
+        : isRelevantOrder(order.key, equipmentType, order.category);
+      if (!relevant) continue;
       pushOrder(
         device,
         order,

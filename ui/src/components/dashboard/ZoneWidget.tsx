@@ -21,6 +21,7 @@ import { allSupportStop } from "../../lib/binding-utils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
+import { isRunning } from "../equipments/equipment-running";
 import { SetpointStepper } from "../equipments/SetpointStepper";
 import { setpointLevel, zoneSetpointBounds } from "../equipments/setpoint";
 import {
@@ -555,13 +556,12 @@ function ZoneHeatingWidget({
       if (spBinding && typeof spBinding.value === "number") {
         setpoints.push(spBinding.value);
       }
+      if (eq.type === "heater") continue;
       const power = thermostatPowerStateBinding(eq.dataBindings);
       if (power?.value === true) on = true;
       if (!power) {
-        // Relay-style heaters: read the state's VALUE. This branch is newly
-        // reachable for a submetered thermostat without a state binding
-        // (spec 176), and the old existence check would have painted the zone
-        // warm forever there.
+        // A submetered thermostat without a state binding (spec 176): read the
+        // state's VALUE, its existence would paint the zone warm forever.
         const state = eq.dataBindings.find(
           (b) => b.alias === "state" || b.category === "light_state",
         );
@@ -575,6 +575,10 @@ function ZoneHeatingWidget({
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [filteredEquipments]);
 
+  // Spec 216 — a heater is warm in its comfort modes. Kept apart from `anyOn`,
+  // which drives the thermostats' on/off button.
+  const warm = anyOn || filteredEquipments.some((eq) => eq.type === "heater" && isRunning(eq));
+
   const displaySetpoint = shownSetpoint ?? avgSetpoint;
 
   const thermometerLevel = setpointLevel(displaySetpoint, bounds.min, bounds.max);
@@ -584,7 +588,7 @@ function ZoneHeatingWidget({
       {/* Zone 2: Picto + temp + power */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <ThermometerIcon warm={anyOn} level={thermometerLevel} />
+        <ThermometerIcon warm={warm} level={thermometerLevel} />
         <div className="flex flex-col items-start gap-2 pl-2">
           {avgTemp !== null ? (
             <div className="flex items-baseline gap-0.5">

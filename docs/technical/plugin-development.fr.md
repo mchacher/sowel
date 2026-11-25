@@ -864,6 +864,8 @@ interface DiscoveredDevice {
 }
 ```
 
+**Modules fil pilote** (spec 216). Un module qui porte l'ordre d'un fil pilote le publie comme une donnée `enum` de catégorie `pilot_wire_mode` et un ordre `enum` de catégorie `set_pilot_wire_mode`, quelle que soit la clé. Traduisez les valeurs de votre protocole vers `comfort`, `comfort_minus_1`, `comfort_minus_2`, `eco`, `frost_protection`, `off`, dans les payloads, les ordres et `enumValues`, et ne déclarez que les modes acceptés par le module. Un simple relais sur un fil pilote reste un relais : la convention ON = éco appartient à Sowel.
+
 ### Exemple (depuis weather-forecast)
 
 ```typescript
