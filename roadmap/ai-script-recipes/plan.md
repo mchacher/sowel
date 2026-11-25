@@ -1,4 +1,4 @@
-# Spec 215: plan
+# Roadmap, AI recipes: plan
 
 **Status**: Idea, 2026-11-22. Not scheduled.
 
