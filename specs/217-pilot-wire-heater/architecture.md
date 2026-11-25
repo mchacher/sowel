@@ -65,9 +65,9 @@ explicitly.
 | `src/pilot-wire.ts` (new) | Value table, both directions                                    |
 | `src/z2m-parser.ts`       | Categories, translated enum on discovery, translated payload    |
 | `src/index.ts`            | Translate in `executeOrder`, only for the `pilot_wire_mode` key |
-| `manifest.json`           | Minor version, `sowelVersion` = the release shipping the core   |
+| `manifest.json`           | Minor version, `sowelVersion` unchanged (see Edge Cases)        |
 
 ## Release order
 
-Core release, then plugin release, then registry bump with its hash. The registry bump waits for
-the check on a real module. No deployment is part of this spec.
+Plugin 2.10.0 and its registry entry first, then the core release, then the check on a real module
+(owner's decision, 2026-11-25). No deployment is part of this spec.
