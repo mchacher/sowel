@@ -615,7 +615,7 @@ describe("CompactEquipmentCard — door, awning and pool cover state icons (#116
   });
 });
 
-it("a pilot-wire heater row says its mode and offers the modes (spec 216)", () => {
+it("a pilot-wire heater row says its mode and offers the modes (spec 217)", () => {
   renderCard(
     makeEquipment("heater", [], {
       dataBindings: [

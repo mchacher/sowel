@@ -24,7 +24,7 @@ export function isRunning(equipment: EquipmentWithDetails): boolean {
     case "pool_pump":
     case "water_heater":
       return relayStateOn(bindings);
-    // Spec 216 — the comfort modes, or the relay off on a relay wiring (with no
+    // Spec 217 — the comfort modes, or the relay off on a relay wiring (with no
     // state reading too, where the badge reads « Confort »).
     case "heater":
       return isHeaterRunning(resolveHeaterState(bindings, equipment.orderBindings));

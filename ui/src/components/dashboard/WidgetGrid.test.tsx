@@ -87,7 +87,7 @@ describe("MobileZoneCard", () => {
   });
 });
 
-describe("MobileZoneCard — heating (spec 216)", () => {
+describe("MobileZoneCard — heating (spec 217)", () => {
   it.each([
     ["comfort", true],
     ["eco", false],

@@ -105,7 +105,7 @@ describe("isRunning (spec 208)", () => {
   });
 });
 
-describe("isRunning — heater (spec 216)", () => {
+describe("isRunning — heater (spec 217)", () => {
   it("runs in the comfort modes only, whatever its state says", () => {
     const pilot = (value: unknown) =>
       isRunning(eq("heater", [state(false), binding("m", value, "pilot_wire_mode", "enum")]));

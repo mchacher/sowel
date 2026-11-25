@@ -3,7 +3,7 @@ import { render, screen, userEvent } from "../../test-utils";
 import { HeaterControl } from "./HeaterControl";
 import type { EquipmentWithDetails } from "../../types";
 
-// Spec 216 — one equipment, two wirings.
+// Spec 217 — one equipment, two wirings.
 
 function heater(over: object = {}): EquipmentWithDetails {
   return {

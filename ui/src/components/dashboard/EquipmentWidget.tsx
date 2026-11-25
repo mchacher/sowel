@@ -1077,7 +1077,7 @@ function GateEquipmentWidget({
 }
 
 // ============================================================
-// Heater equipment widget (relay: ON = eco, OFF = comfort; pilot wire: spec 216)
+// Heater equipment widget (relay: ON = eco, OFF = comfort; pilot wire: spec 217)
 // ============================================================
 
 function HeaterEquipmentWidget({

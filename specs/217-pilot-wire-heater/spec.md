@@ -1,4 +1,4 @@
-# Spec 216 — Pilot-wire modes on the electric heater
+# Spec 217 — Pilot-wire modes on the electric heater
 
 **Status**: Draft 2026-11-25.
 

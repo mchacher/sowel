@@ -909,7 +909,7 @@ describe("electric_vehicle auto-binding (spec 183)", () => {
   });
 });
 
-describe("heater bindings (spec 216)", () => {
+describe("heater bindings (spec 217)", () => {
   const module = {
     id: "dev-1",
     name: "Module",

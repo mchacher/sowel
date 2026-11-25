@@ -391,7 +391,7 @@ describe("mobile tap table (spec 196)", () => {
   });
 });
 
-// Spec 216 — a pilot-wire heater opens its sheet, never toggles.
+// Spec 217 — a pilot-wire heater opens its sheet, never toggles.
 it("opens the sheet of a pilot-wire heater", () => {
   const onOpenDetail = vi.fn();
   const onExecuteOrder = vi.fn();

@@ -147,7 +147,7 @@ describe("zone heating setpoint", () => {
   });
 });
 
-// Spec 216 — a heater warms the zone in its comfort modes, and never drives the
+// Spec 217 — a heater warms the zone in its comfort modes, and never drives the
 // thermostats' on/off button.
 describe("zone heating with heaters", () => {
   const heater = (alias: string, category: string, value: unknown) =>

@@ -729,7 +729,7 @@ describe("solar command channel inference (spec 152)", () => {
   });
 });
 
-describe("heater candidates (spec 216)", () => {
+describe("heater candidates (spec 217)", () => {
   it("binds the mode and the metering of a pilot-wire module", () => {
     const result = computeBindingCandidates(
       "heater",

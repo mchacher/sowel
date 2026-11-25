@@ -1288,7 +1288,7 @@ describe("EquipmentManager", () => {
     });
 
     it.each([true, false])(
-      "binds a heater through the API path, pilot wire: %s (spec 216)",
+      "binds a heater through the API path, pilot wire: %s (spec 217)",
       (pilot) => {
         const zone = zoneManager.create({ name: "Salon" });
         const { deviceId } = seedDevice(db, {

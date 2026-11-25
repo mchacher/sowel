@@ -575,7 +575,7 @@ function ZoneHeatingWidget({
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [filteredEquipments]);
 
-  // Spec 216 — a heater is warm in its comfort modes. Kept apart from `anyOn`,
+  // Spec 217 — a heater is warm in its comfort modes. Kept apart from `anyOn`,
   // which drives the thermostats' on/off button.
   const warm = anyOn || filteredEquipments.some((eq) => eq.type === "heater" && isRunning(eq));
 

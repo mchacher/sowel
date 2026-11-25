@@ -803,7 +803,7 @@ describe("EquipmentWidget — pool cover tile (#1152)", () => {
   });
 });
 
-// Spec 216 — six modes have no opposite: a pilot-wire tile opens its sheet, a
+// Spec 217 — six modes have no opposite: a pilot-wire tile opens its sheet, a
 // relay tile still toggles.
 describe("EquipmentWidget — heater", () => {
   const tile = (dataBindings: unknown[], orderBindings: unknown[]) => {

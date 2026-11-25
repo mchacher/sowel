@@ -132,7 +132,7 @@ export function EquipmentDetailSheet({
         customIconProps(customEntry, {
           // "Is this thing doing something" — each family reads it from the
           // state the hook already resolved. A heater is warm in its comfort modes,
-          // whichever its wiring (spec 216).
+          // whichever its wiring (spec 217).
           on: isHeater
             ? isRunning(equipment)
             : isGate
@@ -992,7 +992,7 @@ function ZoneHeatingDetail({
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [equipments]);
 
-  // Spec 216 — a heater is warm in its comfort modes. Kept apart from `anyOn`,
+  // Spec 217 — a heater is warm in its comfort modes. Kept apart from `anyOn`,
   // which drives the thermostats' on/off button.
   const warm = anyOn || equipments.some((eq) => eq.type === "heater" && isRunning(eq));
 

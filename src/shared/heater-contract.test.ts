@@ -14,7 +14,7 @@ const mode = (value: unknown) => ({
 });
 const order = (enumValues?: string[]) => ({ category: "set_pilot_wire_mode", enumValues });
 
-describe("resolveHeaterState (spec 216)", () => {
+describe("resolveHeaterState (spec 217)", () => {
   it("reads a relay as before: ON is eco, OFF or no reading is comfort", () => {
     expect(resolveHeaterState([relay(true)], []).mode).toBe("eco");
     expect(resolveHeaterState([relay("on")], []).mode).toBe("eco");
@@ -68,7 +68,7 @@ describe("resolveHeaterState (spec 216)", () => {
   });
 });
 
-describe("pilotWireBindingKeys (spec 216)", () => {
+describe("pilotWireBindingKeys (spec 217)", () => {
   it("keeps the mode and the metering, not the state nor the probes", () => {
     expect(
       pilotWireBindingKeys(

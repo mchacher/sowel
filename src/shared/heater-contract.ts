@@ -1,5 +1,5 @@
 /**
- * Spec 216 — what a Sowel electric heater is.
+ * Spec 217 — what a Sowel electric heater is.
  *
  * One equipment type, two wirings. The bound points decide which one applies:
  * - `pilot`: a pilot-wire module carries the full order, under the categories

@@ -1,5 +1,5 @@
 /**
- * Heater contract — re-export of the single shared declaration (spec 216).
+ * Heater contract — re-export of the single shared declaration (spec 217).
  * The implementation lives in src/shared/heater-contract.ts, pure TS the UI
  * bundles directly (the spec 150 / 177 pattern).
  */

@@ -54,7 +54,7 @@ import {
 } from "./recipe-outputs.js";
 
 /**
- * Equipment types whose contract binds points by category (specs 182, 183, 216):
+ * Equipment types whose contract binds points by category (specs 182, 183, 217):
  * category → contract alias, applied first on auto-binding.
  */
 const CONTRACT_CATEGORY_ALIASES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
@@ -505,7 +505,7 @@ export class EquipmentManager {
         }
       };
 
-      // Spec 216 — a pilot-wire heater binds its mode and metering only.
+      // Spec 217 — a pilot-wire heater binds its mode and metering only.
       const pilot =
         input.type === "heater" ? pilotWireBindingKeys(device.data, device.orders) : null;
 

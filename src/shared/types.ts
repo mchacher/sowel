@@ -101,7 +101,7 @@ export type DataCategory =
   | "ev_charge_limit"
   // Spec 194 — the power the car says it charges at (W).
   | "ev_charge_power"
-  // Spec 216 — a heater's pilot-wire order. Closed enum, values in
+  // Spec 217 — a heater's pilot-wire order. Closed enum, values in
   // PILOT_WIRE_MODES (heater-contract.ts).
   | "pilot_wire_mode"
   | "generic";
@@ -117,7 +117,7 @@ export type OrderCategory =
   | "set_setpoint"
   // Spec 177 — set a thermostat's operating mode (values: OPERATION_MODE_VALUES).
   | "set_operation_mode"
-  // Spec 216 — set a heater's pilot-wire order (values: PILOT_WIRE_MODES).
+  // Spec 217 — set a heater's pilot-wire order (values: PILOT_WIRE_MODES).
   | "set_pilot_wire_mode"
   | "gate_trigger"
   | "valve_toggle"

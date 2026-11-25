@@ -4,7 +4,7 @@ import { render, screen, userEvent } from "../../test-utils";
 import { EquipmentDetailSheet } from "./WidgetDetailSheet";
 import type { DashboardWidget, EquipmentWithDetails } from "../../types";
 
-// Spec 216 — the sheet a heater tile opens.
+// Spec 217 — the sheet a heater tile opens.
 
 function open(data: object[], orders: object[]) {
   const send = vi.fn().mockResolvedValue(undefined);

@@ -464,7 +464,7 @@ export function computeBindingCandidates(
     }
 
     case "heater": {
-      // Spec 216 — a pilot-wire module binds its mode and metering only.
+      // Spec 217 — a pilot-wire module binds its mode and metering only.
       const pilot = pilotWireBindingKeys(deviceData, deviceOrders);
       if (pilot) return [{ id: "pilot_wire", label: "Pilot wire", ...pilot }];
       // Single candidate grouping everything (power/setpoint/temperature).

@@ -421,7 +421,7 @@ describe("MobileWidgetCard — pool cover (#1152)", () => {
   });
 });
 
-it("says the mode of a pilot-wire heater (spec 216)", () => {
+it("says the mode of a pilot-wire heater (spec 217)", () => {
   const heater = makeEnergyMeter({
     id: "h-1",
     type: "heater",

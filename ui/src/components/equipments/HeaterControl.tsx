@@ -61,7 +61,7 @@ function usePilotWireOrder(
   return { pending, send };
 }
 
-/** One button per mode the module accepts (spec 216). */
+/** One button per mode the module accepts (spec 217). */
 export function PilotWireModes({
   equipment,
   onExecuteOrder,

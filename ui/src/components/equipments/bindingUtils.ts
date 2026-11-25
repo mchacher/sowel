@@ -351,7 +351,7 @@ const RELEVANT_ORDER_CATEGORIES: Partial<Record<EquipmentType, OrderCategory[]>>
   camera: ["set_camera_monitoring"],
   // Spec 182 — start/stop and the charging current, whatever the plugin's keys.
   ev_charger: ["toggle_power", "light_toggle", "set_ev_charge_current"],
-  // Spec 216 — the pilot-wire mode, whatever the plugin's key.
+  // Spec 217 — the pilot-wire mode, whatever the plugin's key.
   heater: ["set_pilot_wire_mode"],
   // Spec 183 — wake, start a charge, set the car's charge limit.
   electric_vehicle: ["ev_wake", "ev_charge_start", "set_ev_charge_limit", "ev_refresh"],
@@ -479,11 +479,11 @@ const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string
   ev_charger: EV_CHARGER_CATEGORY_ALIASES,
   // Spec 183 — the electric vehicle contract.
   electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
-  // Spec 216 — the heater contract.
+  // Spec 217 — the heater contract.
   heater: HEATER_CATEGORY_ALIASES,
 };
 
-/** Types whose contract points bind first (specs 182, 183, 216). */
+/** Types whose contract points bind first (specs 182, 183, 217). */
 const CONTRACT_FIRST_TYPES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   ev_charger: EV_CHARGER_CATEGORY_ALIASES,
   electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
@@ -726,7 +726,7 @@ export function computeBindingPlan(
             ...items.filter((i) => !(i.category && contractMap[i.category])),
           ]
         : [...items];
-    // Spec 216 — a pilot-wire heater binds its mode and metering only.
+    // Spec 217 — a pilot-wire heater binds its mode and metering only.
     const pilot =
       equipmentType === "heater" ? pilotWireBindingKeys(device.data, device.orders) : null;
     for (const data of contractFirst(device.data)) {

@@ -642,7 +642,7 @@ export function MobileZoneCard({
       for (const eq of filtered) {
         const temp = eq.dataBindings.find((b) => b.alias === "temperature");
         if (temp && typeof temp.value === "number") temps.push(temp.value);
-        // Spec 216 — a heater is warm in its comfort modes.
+        // Spec 217 — a heater is warm in its comfort modes.
         if (eq.type === "heater") {
           if (isRunning(eq)) anyOn = true;
           continue;
