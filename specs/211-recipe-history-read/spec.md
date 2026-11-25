@@ -1,6 +1,6 @@
 # Spec 211 — Today's extremes for every thermometer, and history for recipes
 
-**Status**: Draft 2026-11-17, revised after review the same day.
+**Status**: Implemented 2026-11-24 (draft 2026-11-17, revised after review the same day).
 
 ## Context
 
@@ -94,40 +94,35 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
    3. `from` is rounded **up** to the next period boundary and `to` **down** to the start of its
       period, the boundaries being whole hours (`1h`) or the midnights of the day as the core cuts
       it for that category (`1d`: local for rain, UTC for energy and continuous measures, FR2.9);
-   4. `queryHistory` is called with `to = alignedTo + 1 period` — Flux's `range` stop is
-      exclusive, and a store stamping its periods at their end (the hourly bucket stores the hour
-      14:00–15:00 at 15:00) would otherwise lose the last complete period;
-   5. after FR2.6's normalisation, only the points with `alignedFrom ≤ t < alignedTo` are kept:
-      the running period, which the extra period brings in, is stamped `alignedTo` and dropped.
+   4. `queryHistory` is called on `[alignedFrom, alignedTo)` with `rawOnly`: the **raw bucket is
+      always read**, aggregated on the fly. It keeps 7 days, the longest window allowed, and it
+      already holds the last period, which a downsampling task copies only a few minutes after it
+      ends (and partially, for a rain day summed from hourly rows). With both bounds on period
+      boundaries, no window is cut;
+   5. after FR2.6's normalisation, only the points with `alignedFrom ≤ t < alignedTo` are kept.
+
+   Amended at merge: the implementation first read the downsampled buckets and re-read the last
+   period from raw. Reading raw for the whole window is simpler (one Flux query per call), removes
+   the 23:00 to 23:00 UTC day of the daily task, and avoids an uncovered hour between the two reads.
+   Local time is `process.env.TZ`, as everywhere in the core (spec 061): rain hours and days follow
+   it (`aggregateWindow` with `location`), so a half-hour zone gets local hours.
 
    So the result holds **complete periods only**, never the running hour or day, and the first
    period is never cut by the 7-day clamp. A recipe that needs local days for energy reads `1h` and
    keeps the hours it wants. An unparsable `from` / `to`, or an aligned `to` not after the aligned
    `from` → `{ points: [], ok: true }` without querying.
 
-6. **Time stamps — one convention.** Every point is stamped at the **start of its period**, in UTC
-   ISO-8601. Since the stamping depends on **which bucket answered**, not only on the category,
-   `queryHistory` also returns `source: "downsampled" | "raw"`, and the wrapper normalises on the
-   couple (category, source):
-
-   | Category   | Source        | Stored stamp (today, FR2.9) | Normalisation  |
-   | ---------- | ------------- | --------------------------- | -------------- |
-   | energy     | `downsampled` | start (`timeSrc: "_start"`) | none           |
-   | energy     | `raw`         | end                         | `− one period` |
-   | continuous | either        | end                         | `− one period` |
-   | rain       | either        | start (`timeShift(-1h)`)    | none           |
-
-   The energy `downsampled` row is unused today (FR2.9's pre-existing defect) and correct the day
-   that defect is fixed. **Exception — `1d` of continuous measures:** the daily task's day runs
-   23:00 → 23:00 UTC (FR2.9); the normalised point is labelled by its UTC date, approximately (it
-   covers the hour before that midnight and not the last hour of the date). This spec does not
-   promise a start-of-day stamp for it; a recipe wanting today's extremes reads FR1, not `1d`
-   history. Points are **sparse**: a period without samples has no point; nothing is zero-filled.
+6. **Time stamps, one convention.** Every point is stamped at the **start of its period**, in UTC
+   ISO-8601. The raw-bucket Flux stamps rain at the start of its period (`timeSrc: "_start"`) and
+   everything else at its end (UTC periods, so the wrapper moves it back one period). Points are
+   **sparse**: a period without samples has no point; nothing is zero-filled.
 
 7. **Bounds.** At most **10 calls per rolling minute per instance**, counting only the calls that
-   reach Influx (calls answered by FR2.3-FR2.5 are free). Beyond: the promise rejects with
-   `Error("history rate limit")`. One call may run up to 3 Flux queries inside `queryHistory`
-   (downsampled bucket, fallback, union); the limit counts calls, which is what a recipe controls.
+   reach Influx (calls answered by FR2.3-FR2.5 are free). Beyond: `{ points: [], ok: false }`, with
+   one `warn` per helper. It never rejects: `EventBus` catches only synchronous throws, and an
+   unhandled rejection stops the process (`process-crash-handlers.ts`), so a recipe that forgot a
+   try/catch would restart Sowel. Amended at merge (the first draft rejected). One call runs one
+   Flux query (the rain path may run two: downsampled read, then raw fallback, not used here).
    Results keep core's existing `limit(n: 500)` for aggregated queries.
 8. **Errors.** `ok` tells an empty answer from an outage:
    - Influx not configured (`isConnected()` false — it means configured, not reachable,
@@ -137,7 +132,7 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
      see that from the result alone, so `queryHistory` reports whether it hit an error, and the
      wrapper returns `{ points: [], ok: false }` in that case (partial points are dropped);
    - any other throw (a programming error) → `{ points: [], ok: false }` and an `error` log;
-   - never a throw into the recipe, except the rate limit (FR2.7).
+   - never a throw into the recipe (FR2.7).
 9. **What the core stamps today, measured** (code read in `history-query.ts` and
    `influx-client.ts`; measured on Adrien's instance on 2026-11-17 at 15:42 UTC). This is what
    FR2.6 normalises:
@@ -161,10 +156,8 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
      partial. Today's extremes therefore come from FR1, never from `1d` history.
 
    The energy `value_number` / `mean` mismatch is a **pre-existing defect** (it also affects the
-   UI charts, which read the raw fallback): out of scope here, to be filed as its own issue. FR2.6
-   already normalises on the bucket that answered, so fixing it does not shift recipes' buckets;
-   and a test in `history-query.test.ts`, citing 211 FR2.6, pins today's `_field == "mean"` filter
-   on the energy downsampled buckets, so whoever fixes the defect is sent to FR2.6's table.
+   UI charts, which read the raw fallback): out of scope here, to be filed as its own issue. Since
+   recipes read the raw bucket (FR2.5.4), fixing it does not change what they get.
 
 10. **Security.** No new exposure: a recipe already holds the whole `equipmentManager` (every
     equipment's live values); history reads the same equipments' past values, read-only.
@@ -188,7 +181,7 @@ hour** — two pairs on Adrien's instance (gîte energy, rain), far under FR2.7.
 - [ ] Unknown alias, boolean binding, invalid aggregation or window → `{ points: [], ok: true }`
       with no Influx call.
 - [ ] Influx not configured, unreachable or failing → `{ points: [], ok: false }`.
-- [ ] The 11th call reaching Influx in a minute from one instance rejects; another instance, and
+- [ ] The 11th call reaching Influx in a minute from one instance answers `ok: false`; another instance, and
       calls answered without Influx, are unaffected.
 
 ## Edge Cases

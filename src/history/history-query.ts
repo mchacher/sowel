@@ -19,7 +19,7 @@ let rainHourlyFailureWarned = false;
  * The house's time zone, so a rain day is cut at local midnight like the energy
  * views (spec 119). Same source and fallback as the energy routes.
  */
-function getServerTz(): string {
+export function getServerTz(): string {
   return process.env.TZ ?? "Europe/Paris";
 }
 
@@ -45,9 +45,11 @@ function autoResolution(fromMs: number, toMs: number, category?: string): Resolu
 
 /**
  * Parse a "from" string into a Date.
- * Accepts ISO 8601 or relative like "-24h", "-7d", "-30d".
+ * Accepts ISO 8601 or relative like "-30m", "-24h", "-7d".
+ * Exported for the recipe history wrapper (spec 211 FR2.5), which also reads
+ * its `to` with it. An unparsable string yields an Invalid Date.
  */
-function parseFrom(from: string): Date {
+export function parseFrom(from: string): Date {
   if (from.startsWith("-")) {
     const match = from.match(/^-(\d+)([hdm])$/);
     if (match) {
@@ -362,6 +364,17 @@ export async function queryHistory(
     aggregation?: "raw" | "1h" | "1d" | "auto";
     dataType?: string;
     category?: string;
+    /**
+     * Spec 211 FR2.8 — called when a query failed and was only logged, so the
+     * points returned may be partial. The REST route does not pass it.
+     */
+    onError?: () => void;
+    /**
+     * Spec 211 FR2.5 — aggregate the raw bucket on the fly, never a
+     * downsampled one (recipes read at most 7 days, the raw retention, and
+     * the last period may not be downsampled yet). The REST route does not pass it.
+     */
+    rawOnly?: boolean;
   },
   logger: Logger,
 ): Promise<HistoryQueryResult> {
@@ -387,7 +400,9 @@ export async function queryHistory(
 
   // Resolve target bucket based on resolution (raw, hourly, or daily)
   // Energy category uses dedicated energy buckets
-  const targetBucket = resolveBucket(config.bucket, resolution, params.category);
+  const targetBucket = params.rawOnly
+    ? config.bucket
+    : resolveBucket(config.bucket, resolution, params.category);
 
   try {
     if (resolution === "raw") {
@@ -587,6 +602,7 @@ export async function queryHistory(
       { err, equipmentId: params.equipmentId, alias: params.alias },
       "InfluxDB query failed",
     );
+    params.onError?.();
   }
 
   return { points, resolution };

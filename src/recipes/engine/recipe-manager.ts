@@ -39,6 +39,8 @@ import { Recipe, type RecipeContext } from "./recipe.js";
 import { toISOUtc } from "../../core/database.js";
 import { RecipeStateStore } from "./recipe-state-store.js";
 import { isAnyLightOn, turnOnLights, turnOffLights, setLightsBrightness } from "./light-helpers.js";
+import { createRecipeHistory } from "./recipe-history.js";
+import type { InfluxClient } from "../../core/influx-client.js";
 import { parseDuration, formatDuration } from "./duration.js";
 
 // ============================================================
@@ -83,6 +85,9 @@ export class RecipeManager {
   /** Spec 140 — capacity arbiter behind `ctx.helpers.energy`. Null in tests
    *  and shadow contexts: the helper then denies `arbiter-disabled`. */
   private capacityArbiter: CapacityArbiter | null;
+  /** Spec 211 — source of `ctx.helpers.history`. Null in most tests: the
+   *  helper is then absent. (In shadow mode no instance starts, spec 124.) */
+  private influxClient: InfluxClient | null;
 
   constructor(
     db: Database.Database,
@@ -95,6 +100,7 @@ export class RecipeManager {
     logger: Logger,
     shadowMode = false,
     capacityArbiter: CapacityArbiter | null = null, // spec 140 — ctx.helpers.energy
+    influxClient: InfluxClient | null = null, // spec 211 — ctx.helpers.history
   ) {
     this.db = db;
     this.eventBus = eventBus;
@@ -107,6 +113,7 @@ export class RecipeManager {
     this.stmts = this.prepareStatements();
     this.shadowMode = shadowMode;
     this.capacityArbiter = capacityArbiter;
+    this.influxClient = influxClient;
   }
 
   private prepareStatements() {
@@ -658,9 +665,11 @@ export class RecipeManager {
     });
   }
 
-  // `energy` is per-instance (the claim must be owned, spec 140), so the
-  // shared object carries everything BUT it; buildContext adds it.
-  private readonly helpers: Omit<RecipeHelpers, "energy" | "equipmentData"> = {
+  // `energy` is per-instance (the claim must be owned, spec 140), as are
+  // `equipmentData` (spec 214) and `history` (spec 211, its rate limit is per
+  // context), so the shared object carries everything BUT them; buildContext
+  // adds them.
+  private readonly helpers: Omit<RecipeHelpers, "energy" | "equipmentData" | "history"> = {
     isAnyLightOn,
     turnOnLights,
     turnOffLights,
@@ -779,6 +788,22 @@ export class RecipeManager {
         ...this.helpers,
         energy: this.buildEnergyHelpers(instanceId),
         equipmentData: this.buildEquipmentDataHelpers(instanceId, publishToken),
+        // Spec 211 — a fresh helper per context: its rate-limit counter lives
+        // and dies with it, and a validate() context never drains an instance's.
+        history: this.influxClient
+          ? createRecipeHistory({
+              influxClient: this.influxClient,
+              equipmentManager: this.equipmentManager,
+              logger: this.logger,
+              instanceId,
+              // Bound to this start, like equipmentData: a closure left over
+              // from a stopped or earlier start reads nothing.
+              isCurrent:
+                publishToken === undefined
+                  ? undefined
+                  : () => this.publishTokens.get(instanceId) === publishToken,
+            })
+          : undefined,
       },
       dispatchOrder: (equipmentId, alias, value) =>
         this.equipmentManager.executeOrder(equipmentId, alias, value, orderSource),

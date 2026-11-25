@@ -1,6 +1,12 @@
 # Implementation Plan — Spec 211
 
-**Status**: Draft 2026-11-17, revised after review — awaiting approval.
+**Status**: Implemented 2026-11-24, amended at merge 2026-11-25.
+
+**Amended at merge.** The wrapper reads the raw bucket for the whole window (spec FR2.5.4), so the
+`source` field, the head/tail split and the (category, source) table below are gone, and a call
+over the rate limit answers `ok: false` instead of rejecting (FR2.7). The tracker's alias cache
+also expires after a minute, for categories reclassified on rediscovery. The test rows below that
+mention `source`, the downsampled buckets or a rejection describe the first implementation.
 
 ## Slices
 
