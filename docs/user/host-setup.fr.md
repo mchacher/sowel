@@ -114,7 +114,7 @@ mosquitto_sub -h <ip-de-l'hôte> -p 1883 -t test/#
 mosquitto_pub -h <ip-de-l'hôte> -p 1883 -t test/hello -m "ok"
 ```
 
-Si le message arrive, le broker est joignable. Z2M lui-même, qui tourne sur l'hôte, peut utiliser `mqtt://localhost:1883`.
+Si le message arrive, le broker est joignable. Zigbee2MQTT lui-même utilise `mqtt://<ip-de-l'hôte>:1883`, ou `mqtt://localhost:1883` s'il tourne directement sur l'hôte (pas dans un conteneur).
 
 ### Pointer Sowel vers le broker
 

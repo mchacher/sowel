@@ -114,7 +114,7 @@ mosquitto_sub -h <host-ip> -p 1883 -t test/#
 mosquitto_pub -h <host-ip> -p 1883 -t test/hello -m "ok"
 ```
 
-If the message arrives, the broker is reachable. Z2M itself, which runs on the host, can use `mqtt://localhost:1883`.
+If the message arrives, the broker is reachable. Zigbee2MQTT itself uses `mqtt://<host-ip>:1883`, or `mqtt://localhost:1883` when it runs directly on the host (not in a container).
 
 ### Point Sowel at the broker
 

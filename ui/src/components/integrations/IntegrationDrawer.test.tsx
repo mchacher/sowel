@@ -203,6 +203,25 @@ describe("IntegrationDrawer — status detail (spec 216)", () => {
     expect(screen.queryByText(reason)).toBeNull();
   });
 
+  it("reads the list again a moment after a start", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { onRefresh } = open(
+        tesla({
+          status: "disconnected",
+          configured: true,
+          settingValues: { client_id: "abc", domain: "d.example", charger: "" },
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Start" }));
+      await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+      vi.advanceTimersByTime(3000);
+      expect(onRefresh).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("hides it on a disabled plugin", () => {
     open(tesla({ status: "error", enabled: false, statusDetail: reason }));
     expect(screen.queryByText(reason)).toBeNull();

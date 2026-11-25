@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   X,
@@ -36,6 +36,9 @@ interface IntegrationDrawerProps {
   onRefresh: () => void;
 }
 
+/** Spec 216: second read of the list after a start, once the plugin knows why it failed. */
+const STATUS_FOLLOW_UP_MS = 3000;
+
 export function IntegrationDrawer({ integration, onClose, onRefresh }: IntegrationDrawerProps) {
   const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -43,6 +46,16 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  // Spec 216: a plugin learns why it cannot connect a moment after start()
+  // returns (the broker refuses, the name does not resolve), so the list is
+  // read again shortly after a start to show that reason.
+  const followUp = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (followUp.current) clearTimeout(followUp.current);
+    },
+    [],
+  );
   const [oauthLoading, setOauthLoading] = useState(false);
   // Spec 212: an empty required field is marked once left or saved, never on open.
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -107,6 +120,12 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
     }
   };
 
+  const refreshAfterStart = () => {
+    onRefresh();
+    if (followUp.current) clearTimeout(followUp.current);
+    followUp.current = setTimeout(onRefresh, STATUS_FOLLOW_UP_MS);
+  };
+
   const isDisabled = integration.enabled === false;
   // When the plugin is disabled, hide noisy "error" / "disconnected" runtime
   // states behind the persistent "disabled" label — the integration is
@@ -148,10 +167,11 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
       if (isConnected) {
         await restartIntegration(integration.id);
         showMessage("success", t("integrations.savedRestarted"));
+        refreshAfterStart();
       } else {
         showMessage("success", t("integrations.saved"));
+        onRefresh();
       }
-      onRefresh();
     } catch (err) {
       showMessage("error", err instanceof Error ? err.message : t("common.error"));
     } finally {
@@ -190,7 +210,8 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           showMessage("success", t("integrations.disabled"));
           break;
       }
-      onRefresh();
+      if (action === "start" || action === "restart" || action === "enable") refreshAfterStart();
+      else onRefresh();
     } catch (err) {
       showMessage("error", err instanceof Error ? err.message : t("common.error"));
     } finally {

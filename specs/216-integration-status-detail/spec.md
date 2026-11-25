@@ -1,6 +1,6 @@
 # Spec 216: An integration says why it is not connected
 
-- **Status**: Implemented
+- **Status**: In progress (core done, plugins being released)
 - **Scope**: `IntegrationPlugin` (optional method), `GET /api/v1/integrations`, `IntegrationDrawer`, user docs (host setup); then the seven MQTT plugins
 - **Related**: spec 111 (plugin method wrapping), spec 212 (integration drawer)
 
@@ -28,6 +28,7 @@ The usual fixes are known: `host.docker.internal` (which needs `extra_hosts` in 
 - **R2** Core wraps it like the other sync methods (spec 111): a throw is logged and read as `null`.
 - **R3** `GET /api/v1/integrations` adds `statusDetail` when the plugin returns a non-empty string, trimmed and capped at 300 characters.
 - **R4** The drawer shows the detail in a box under the status cards when the integration is enabled and not connected. It is hidden once connected and on a disabled plugin.
+- **R4b** After Start, Restart, Enable or a save that restarts, the drawer reads the list again 3 s later: the plugin learns why it failed a moment after `start()` returns.
 - **R5** MQTT plugins set `defaultValue: "mqtt://host.docker.internal:1883"` on `mqtt_url`. The drawer already prefills a default into an empty field; existing installs keep their saved value.
 - **R6** MQTT plugins map errors to a sentence: name not resolved (with the `extra_hosts` hint for `host.docker.internal`), connection refused (with the localhost hint when the URL points at localhost, the listener hint otherwise), no answer, credentials rejected, anything else as the raw message. The detail clears on connect.
 
