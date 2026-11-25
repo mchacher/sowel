@@ -346,7 +346,7 @@ options: [
 
 Every mode control (the tile, the zone page, the recipe row, the equipment cards) then skips it while that parameter is absent, `null`, an empty string or an empty list; `0` and `false` count as set. The core filters on nothing else: it knows no slot of your recipe by name, so an option without `requiresParam` is always offered. Still ignore such a mode in `onAction` when its setting is missing, since the API can send it anyway, and do so before anything else the action would change. A core older than #1210 ignores the field and still hides, by name, an option `cocoon` without `cocoonTemp` or `night` without `nightTemp`.
 
-## Publishing data on an equipment (spec 214)
+## Publishing data on an equipment (spec 214) { #publishing-data-on-an-equipment-spec-214 }
 
 A recipe can give an equipment a value no device reports: a washing machine's run state read on a metering plug, say. The value shows as a binding of the equipment, so its card, its panel, its history, the binding pickers and other recipes (`state-watch`) read it like any other. Declare it, then publish it:
 
