@@ -7,11 +7,11 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-zigbee2mqtt",
-    "version": "2.8.2",
+    "version": "2.9.0",
     "tags": ["zigbee", "mqtt", "z2m", "sensors", "lights", "switches"],
     "sowelVersion": ">=1.59.0",
     "owner": "mchacher",
-    "sha256": "291659abf320153042dd0a3f5bd06b6e5e8d2cf524a23d3720a464b4cad82cf0"
+    "sha256": "4276aa8e31aad6393bf0f7a51f072f2cb52dc9510f7c73a793bcf9070ad24254"
   },
   {
     "id": "lora2mqtt",
@@ -21,11 +21,11 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-lora2mqtt",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "tags": ["lora", "mqtt", "iot", "sensors"],
     "sowelVersion": ">=1.2.12",
     "owner": "mchacher",
-    "sha256": "1e5733c5174e5d4ac74b1a00995de9f2d2aef9294bba43f40a20b6d630d10fcb"
+    "sha256": "5e01af0be18e2275a62dd2e74691c690dcd6e564fadbed59684897331465341b"
   },
   {
     "id": "tasmota",
@@ -35,11 +35,11 @@
     "icon": "Power",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-tasmota",
-    "version": "1.0.7",
+    "version": "1.1.0",
     "tags": ["tasmota", "sonoff", "mqtt", "switch", "shutter"],
     "sowelVersion": ">=1.2.12",
     "owner": "mchacher",
-    "sha256": "958cd542af48803306704585edb343720aec940d732ae8f42afa6f9ab1affcb5"
+    "sha256": "76a034ffae986cf017080175d56c37a67100462a26b1b0a2d483e9eebabf3b67"
   },
   {
     "id": "panasonic_cc",
@@ -147,11 +147,11 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-somfy-rts",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "tags": ["somfy", "rts", "mqtt", "shutter", "awning", "gate"],
     "sowelVersion": ">=1.12.0",
     "owner": "mchacher",
-    "sha256": "6b43c22f9d94ff13304027367741eb44e3a70e88c9144c761aca1f9751c626e3"
+    "sha256": "2081fe3b7b74e86f1697c7738f7226ef940882737bc054134d998c13c31bf38c"
   },
   {
     "id": "switch-light",
@@ -392,7 +392,7 @@
     "icon": "Zap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-shelly-mqtt",
-    "version": "1.2.3",
+    "version": "1.3.0",
     "tags": ["shelly", "mqtt", "energy", "em", "solar", "grid"],
     "i18n": {
       "fr": {
@@ -402,7 +402,7 @@
     },
     "sowelVersion": ">=1.5.1",
     "owner": "mchacher",
-    "sha256": "f7e04105fc963519d56f9ce2822ab7930008dadf0cd5cd1be6223ffd3930cb22"
+    "sha256": "8392b79e09b2e48bc294575ff0b2ff92b29df5fe2764eb1ef3b0f80def17ea7b"
   },
   {
     "id": "polytropic_master",
@@ -432,7 +432,7 @@
     "icon": "Monitor",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-displays",
-    "version": "0.2.2",
+    "version": "0.3.0",
     "tags": ["display", "mqtt", "energy-display", "supervision"],
     "i18n": {
       "fr": {
@@ -442,7 +442,7 @@
     },
     "sowelVersion": ">=1.19.0",
     "owner": "mchacher",
-    "sha256": "438c337f0700a3db8f45cc0268ed6f1c5aba7411f490a667917f662418bc0446"
+    "sha256": "da612e8cceee16211280a368bad66228d8c8ef5ef44b9589b89e33d3da61c8c4"
   },
   {
     "id": "presence-display",
@@ -473,7 +473,7 @@
     "icon": "Sun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-apsystems",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "tags": ["apsystems", "solar", "photovoltaic", "inverter", "mqtt", "ds3", "production"],
     "i18n": {
       "fr": {
@@ -483,7 +483,7 @@
     },
     "sowelVersion": ">=1.21.0",
     "owner": "mchacher",
-    "sha256": "ab906490f8bcafb3e417a1c642e4f2ce145436b4c478e9e28192cc281b110de5"
+    "sha256": "f755f4cd6b4939a0c42a36f851037cba062c75a0d705bc27e8ad5c90d0f4cec8"
   },
   {
     "id": "schedule-on-off",
