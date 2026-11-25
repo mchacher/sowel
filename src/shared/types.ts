@@ -2213,6 +2213,8 @@ export interface IntegrationInfo {
   settings: IntegrationSettingDef[];
   configured: boolean;
   polling?: { lastPollAt: string; intervalMs: number };
+  /** Spec 216: why the integration is not connected, from the plugin. */
+  statusDetail?: string;
   deviceCount: number;
   offlineDeviceCount: number;
   /** True if the integration supports OAuth 2.0 authorization flow */

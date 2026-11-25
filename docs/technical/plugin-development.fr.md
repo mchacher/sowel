@@ -381,7 +381,7 @@ Les méthodes de lecture (`getAll`, `getById`, `getDeviceData`, `getDeviceDataVa
 
 ### 4. Les erreurs des méthodes lifecycle sont confinées
 
-Un throw dans `refresh()`, `getStatus()`, `isConfigured()`, `getSettingsSchema()`, `getPollingInfo()`, `getOAuthUrl()` est **loggé avec l'id de votre plugin** et remplacé par une valeur par défaut sûre (`undefined`, `"error"`, `false`, `[]`, `null`). Le core Sowel continue à tourner.
+Un throw dans `refresh()`, `getStatus()`, `isConfigured()`, `getSettingsSchema()`, `getPollingInfo()`, `getStatusDetail()`, `getOAuthUrl()` est **loggé avec l'id de votre plugin** et remplacé par une valeur par défaut sûre (`undefined`, `"error"`, `false`, `[]`, `null`). Le core Sowel continue à tourner.
 
 Un throw dans `start()`, `stop()`, `executeOrder()` ou `handleOAuthCallback()` est toujours loggé mais **rethrown** parce que l'appelant (registry, moteur de recettes, route OAuth) doit pouvoir réagir.
 
@@ -421,6 +421,7 @@ interface IntegrationPlugin {
   executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+  getStatusDetail?(): string | null;
 }
 
 type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "error";
@@ -438,6 +439,7 @@ type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "erro
 | `executeOrder()`      | Oui     | Exécute une commande sur un device. Levez une erreur si le plugin ne supporte pas les ordres.                      |
 | `refresh()`           | Non     | Force un rafraîchissement immédiat (par ex. re-poll de l'API cloud). Appelé depuis le bouton refresh de l'UI.      |
 | `getPollingInfo()`    | Non     | Retourne le timestamp du dernier poll et l'intervalle. Affiché dans l'UI intégrations pour les plugins en polling. |
+| `getStatusDetail()`   | Non     | Une phrase courte qui dit pourquoi le plugin n'est pas connecté et quoi vérifier. Affichée sous le statut.         |
 
 ---
 
@@ -594,6 +596,7 @@ interface IntegrationPlugin {
   executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+  getStatusDetail?(): string | null;
 }
 ```
 

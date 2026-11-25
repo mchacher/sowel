@@ -334,6 +334,9 @@ export function wrapPluginMethods(
     getPollingInfo: plugin.getPollingInfo
       ? wrapSync("getPollingInfo", plugin.getPollingInfo.bind(plugin), null)
       : undefined,
+    getStatusDetail: plugin.getStatusDetail
+      ? wrapSync("getStatusDetail", plugin.getStatusDetail.bind(plugin), null)
+      : undefined,
     getOAuthUrl: plugin.getOAuthUrl
       ? wrapSync("getOAuthUrl", plugin.getOAuthUrl.bind(plugin), null)
       : undefined,
