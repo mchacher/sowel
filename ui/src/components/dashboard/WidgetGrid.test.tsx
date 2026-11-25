@@ -86,3 +86,28 @@ describe("MobileZoneCard", () => {
     expect(button.getAttribute("aria-label")).toBeNull();
   });
 });
+
+describe("MobileZoneCard — heating (spec 217)", () => {
+  it.each([
+    ["comfort", true],
+    ["eco", false],
+  ])("a pilot heater in %s: warm is %s", (value, warm) => {
+    const { container } = render(
+      <MobileZoneCard
+        widget={{ id: "w", type: "zone", zoneId: "z1", family: "heating" } as DashboardWidget}
+        zone={{ id: "z1", name: "Salon", children: [] } as unknown as ZoneWithChildren}
+        equipments={[
+          {
+            id: "h",
+            zoneId: "z1",
+            type: "heater",
+            dataBindings: [{ alias: "wire", category: "pilot_wire_mode", value }],
+            orderBindings: [],
+          } as unknown as EquipmentWithDetails,
+        ]}
+        onClick={() => {}}
+      />,
+    );
+    expect(container.querySelector("svg.text-heat") !== null).toBe(warm);
+  });
+});

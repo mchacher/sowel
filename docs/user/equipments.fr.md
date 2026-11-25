@@ -126,10 +126,12 @@ La consigne a les mêmes boutons − / + sur la page de l'équipement, dans les 
 
 #### Radiateur
 
-Radiateur électrique individuel piloté par relais fil pilote.
+Radiateur électrique individuel sur fil pilote, piloté par un relais ou par un module fil pilote. C'est un seul type d'équipement ; ce qu'offre le device décide des contrôles.
 
-- **Contrôles :** Bascule Confort / Éco
-- **Données attendues :** état du relais (ON = éco, OFF = confort)
+- **Relais :** bascule Confort / Éco, d'après l'état du relais (ON = éco, OFF = confort)
+- **Module fil pilote** (NodOn SIN-4-FP-21 et similaires, via Zigbee2MQTT) : un bouton par mode accepté parmi Confort, Confort -1 °C, Confort -2 °C, Éco, Hors gel et Arrêt. Sowel lie le mode et les mesures de puissance / énergie, et laisse de côté le `state` marche/arrêt du module : il n'y signifie ni confort ni éco. Un radiateur créé avant que Sowel connaisse ces modes montre son mode sans boutons : ouvrez son panneau des liaisons manquantes et ajoutez ce qu'il propose, puis retirez l'ancienne liaison `state`, sinon une recette pourrait encore le commander.
+- La consigne reste réglée sur le radiateur : un mode abaisse la cible, il n'en fixe pas. Certains radiateurs ne suivent le fil pilote qu'en programmation externe, et d'anciens modèles peuvent ignorer Confort -1 et -2. Sowel affiche l'ordre envoyé par le module.
+- La recette Chauffage présence ne pilote que les relais ; elle refuse un radiateur sans `state` marche/arrêt.
 
 #### Chauffe-eau
 

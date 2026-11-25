@@ -802,3 +802,50 @@ describe("EquipmentWidget — pool cover tile (#1152)", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 });
+
+// Spec 217 — six modes have no opposite: a pilot-wire tile opens its sheet, a
+// relay tile still toggles.
+describe("EquipmentWidget — heater", () => {
+  const tile = (dataBindings: unknown[], orderBindings: unknown[]) => {
+    const onOpenDetail = vi.fn();
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    render(
+      <EquipmentWidget
+        widget={makeWidget()}
+        equipment={makeEquipment({
+          name: "Radiateur",
+          type: "heater",
+          dataBindings: dataBindings as EquipmentWithDetails["dataBindings"],
+          orderBindings: orderBindings as EquipmentWithDetails["orderBindings"],
+        })}
+        onExecuteOrder={onExecuteOrder}
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+    return { onOpenDetail, onExecuteOrder };
+  };
+  const state = { alias: "state", category: "light_state", value: false };
+  const toggle = { alias: "state", category: "light_toggle", type: "boolean" };
+
+  it("opens the sheet of a pilot-wire heater and sends nothing", async () => {
+    const { onOpenDetail, onExecuteOrder } = tile(
+      [state, { alias: "wire", category: "pilot_wire_mode", value: "frost_protection" }],
+      [toggle, { alias: "wire", category: "set_pilot_wire_mode", type: "enum" }],
+    );
+    expect(screen.getByText("Frost protection")).toBeTruthy();
+    await userEvent.click(screen.getByText("Radiateur"));
+    expect(onOpenDetail).toHaveBeenCalledOnce();
+    expect(onExecuteOrder).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [false, "ON"],
+    [true, "OFF"],
+  ])("toggles a relay heater: relay %s sends %s", async (value, sent) => {
+    const { onOpenDetail, onExecuteOrder } = tile([{ ...state, value }], [toggle]);
+    await userEvent.click(screen.getByText("Radiateur"));
+    expect(onOpenDetail).not.toHaveBeenCalled();
+    expect(onExecuteOrder.mock.calls).toHaveLength(1);
+    expect(onExecuteOrder.mock.calls[0].slice(-2)).toEqual(["state", sent]);
+  });
+});

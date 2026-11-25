@@ -614,3 +614,19 @@ describe("CompactEquipmentCard — door, awning and pool cover state icons (#116
     expect(container.querySelector("[data-row-state]")).toBe(icon);
   });
 });
+
+it("a pilot-wire heater row says its mode and offers the modes (spec 217)", () => {
+  renderCard(
+    makeEquipment("heater", [], {
+      dataBindings: [
+        { id: "d", alias: "wire", category: "pilot_wire_mode", value: "eco" },
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        { id: "o", alias: "wire", category: "set_pilot_wire_mode", type: "enum" },
+      ] as unknown as EquipmentWithDetails["orderBindings"],
+    }),
+  );
+  const select = screen.getByRole("combobox") as HTMLSelectElement;
+  expect(select.value).toBe("eco");
+  expect(select.options).toHaveLength(6);
+});

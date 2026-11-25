@@ -1287,6 +1287,34 @@ describe("EquipmentManager", () => {
       });
     });
 
+    it.each([true, false])(
+      "binds a heater through the API path, pilot wire: %s (spec 217)",
+      (pilot) => {
+        const zone = zoneManager.create({ name: "Salon" });
+        const { deviceId } = seedDevice(db, {
+          name: "module",
+          dataKeys: [
+            { key: "state", type: "boolean", category: "light_state" },
+            { key: "power", type: "number", category: "power" },
+            ...(pilot ? [{ key: "wire", type: "enum", category: "pilot_wire_mode" }] : []),
+          ],
+          orderKeys: [
+            { key: "state", type: "boolean", category: "light_toggle" },
+            ...(pilot ? [{ key: "wire", type: "enum", category: "set_pilot_wire_mode" }] : []),
+          ],
+        });
+        const eq = manager.createWithAutoBindings({
+          name: "Radiateur",
+          type: "heater",
+          zoneId: zone.id,
+          deviceIds: [deviceId],
+        });
+        const wire = pilot ? "pilot_wire_mode" : "state";
+        expect(eq.dataBindings.map((b) => b.alias).sort()).toEqual([wire, "power"].sort());
+        expect(eq.orderBindings.map((b) => b.alias)).toEqual([wire]);
+      },
+    );
+
     it("binds an electric vehicle under its contract aliases through the API path (spec 183)", () => {
       const zone = zoneManager.create({ name: "Garage" });
       const { deviceId } = seedDevice(db, {

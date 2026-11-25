@@ -342,6 +342,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 212 | Le bouton Connecter nomme le plugin et le champ manquant              | 🟡     | IntegrationDrawer : le bouton OAuth dit « Connecter à <plugin> » (plus de Samsung en dur), Démarrer garde son nom, les champs obligatoires vides sont nommés et marqués. Livrée en v1.88.0.                                                                                   |
 | 214 | Une recette publie une donnée sur un équipement                       | 🟡     | Une recette déclare `publishes` sur un slot `equipment` et appelle `ctx.helpers.equipmentData.publish` ; vu comme un binding `virtual:recipe:`, historisé ; les écrans d'appareil lisent les watts d'une prise. Livrée en v1.88.0.                                            |
 | 216 | Une intégration dit pourquoi elle n'est pas connectée                 | 🟡     | `getStatusDetail()` optionnel côté plugin, relayé en `statusDetail` et affiché dans le panneau de l'intégration ; les plugins MQTT proposent `mqtt://host.docker.internal:1883` et expliquent les erreurs de connexion.                                                       |
+| 217 | Modes fil pilote sur le radiateur électrique                          | 🟡     | `heater` couvre relais et modules fil pilote (NodOn) : contrat `pilot_wire_mode`, six modes, sélecteur ; le plugin zigbee2mqtt traduit les valeurs ; complète 027. Unreleased.                                                                                                |
 
 ---
 

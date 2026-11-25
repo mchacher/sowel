@@ -73,7 +73,7 @@ export const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCatego
     "noise",
   ],
   // gate is candidate-based (spec 150) — no category entry here.
-  heater: ["generic", "light_state"],
+  heater: ["generic", "light_state", "pilot_wire_mode"],
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy"],
   energy_production_meter: ["energy", "power"],

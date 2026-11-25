@@ -378,6 +378,15 @@ An `electric_vehicle` (battery-electric or plug-in hybrid) is defined by `src/sh
 
 Spec 191 builds charge sessions on these two contracts: the charger's `vehicle`, `power` and `energy`, and the car's `plugged`, `charging_state`, `battery_level`, `at_home`, `reported_at` and `mileage` (see the [data model index](../data-model.md#ev-charge-sessions-spec-191)). A device is offered for an `electric_vehicle` when it declares `ev_battery_level`. A vehicle is never a submeter (`NON_SUBMETER_TYPES`), never a flexible load and never carries a timed command: the charger (spec 182) measures and is the load. Fuel and climate values of a plug-in hybrid are extras.
 
+### 2g Heater contract (spec 217)
+
+A `heater` has one contract module, `src/shared/heater-contract.ts`, and two wirings. `resolveHeaterState` is the only reader of both:
+
+- **pilot**: a `pilot_wire_mode` data point or a `set_pilot_wire_mode` order is bound, both under the alias `pilot_wire_mode`. Values: `comfort`, `comfort_minus_1`, `comfort_minus_2`, `eco`, `frost_protection`, `off`; the order's `enumValues` say which ones the module accepts. Any `state` is ignored; a missing or foreign value is unknown.
+- **relay**: otherwise. The `state` relay ON is eco, OFF is comfort.
+
+A device with a pilot-wire point binds its mode and its metering (`power`, `energy`, `voltage`, `current`) only, from the UI and from `createWithAutoBindings` alike. A heater runs in its three comfort modes.
+
 ### 3 Per-binding category override
 
 Migration `006_pool_runtime_and_category_override.sql` added `category_override` so an Equipment of type `pool_pump` can re-tag a generic relay's `toggle_power` order as `pool_pump_toggle` without touching the device definition. Effective category is `COALESCE(order_bindings.category_override, device_orders.category)`.

@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { DashboardWidget, EquipmentWithDetails } from "../../types";
+import { heaterModeKey } from "../equipments/heaterMode";
+import { isHeaterRunning, resolveHeaterState } from "../../lib/heater-contract";
 import { useEquipmentState } from "../equipments/useEquipmentState";
 import {
   getSensorBindings,
@@ -333,16 +335,13 @@ function useMobileState(
   }
 
   if (isHeater) {
-    const stateBinding = equipment.dataBindings.find(
-      (b) => b.alias === "state" || b.category === "light_state",
-    );
-    const relayOn = stateBinding
-      ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
-      : false;
-    const isComfort = !relayOn;
+    const state = resolveHeaterState(equipment.dataBindings, equipment.orderBindings);
     return {
-      icon: renderWidgetStateIcon(widget.icon, <HeaterWidgetIcon comfort={isComfort} />),
-      stateLines: [isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")],
+      icon: renderWidgetStateIcon(
+        widget.icon,
+        <HeaterWidgetIcon comfort={isHeaterRunning(state)} />,
+      ),
+      stateLines: [t(heaterModeKey(state.mode))],
     };
   }
 
