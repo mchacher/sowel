@@ -838,10 +838,14 @@ describe("EquipmentWidget — heater", () => {
     expect(onExecuteOrder).not.toHaveBeenCalled();
   });
 
-  it("toggles a relay heater", async () => {
-    const { onOpenDetail, onExecuteOrder } = tile([state], [toggle]);
+  it.each([
+    [false, "ON"],
+    [true, "OFF"],
+  ])("toggles a relay heater: relay %s sends %s", async (value, sent) => {
+    const { onOpenDetail, onExecuteOrder } = tile([{ ...state, value }], [toggle]);
     await userEvent.click(screen.getByText("Radiateur"));
     expect(onOpenDetail).not.toHaveBeenCalled();
-    expect(onExecuteOrder).toHaveBeenCalled();
+    expect(onExecuteOrder.mock.calls).toHaveLength(1);
+    expect(onExecuteOrder.mock.calls[0].slice(-2)).toEqual(["state", sent]);
   });
 });

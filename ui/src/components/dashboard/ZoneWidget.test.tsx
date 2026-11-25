@@ -169,12 +169,19 @@ describe("zone heating with heaters", () => {
     const tile = render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[eq]} />);
     expect(tile.container.querySelector("svg.text-heat") !== null).toBe(warm);
     tile.unmount();
+
+    const sheet = render(
+      <ZoneDetailSheet widget={WIDGET} zone={ZONE} equipments={[eq]} onClose={vi.fn()} />,
+    );
+    expect(sheet.baseElement.querySelector("svg.text-heat") !== null).toBe(warm);
   });
 
-  it("still turns the thermostats on when only a heater is warm", () => {
+  it.each([
+    ["a warm pilot heater", pilot("comfort")],
+    ["a relay heater in eco", relay(true)],
+  ])("turns the thermostats on beside %s", (_n, eq) => {
     vi.mocked(api.executeZoneOrder).mockResolvedValue(undefined as never);
-    const off = thermostat("a", 20);
-    render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[off, pilot("comfort")]} />);
+    render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[thermostat("a", 20), eq]} />);
     fireEvent.click(screen.getByRole("button", { name: "Turn on" }));
     expect(api.executeZoneOrder).toHaveBeenCalledWith("z1", "allThermostatsPowerOn", undefined);
   });

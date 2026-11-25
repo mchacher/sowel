@@ -42,19 +42,18 @@ update needs no alias migration.
 
 ## Files changed — Sowel
 
-| Domain  | File                                                                                                               | Change                                           |
-| ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| Types   | `src/shared/types.ts`, `ui/src/types.ts`                                                                           | Two categories                                   |
-| Shared  | `src/shared/heater-contract.ts` (new)                                                                              | Contract, resolver, binding selection            |
-| Shared  | `src/shared/binding-candidates.ts`                                                                                 | Heater candidate uses the selection              |
-| Backend | `src/equipments/equipment-manager.ts`                                                                              | API auto-binding uses the selection              |
-| UI      | `ui/src/lib/heater-contract.ts` (new)                                                                              | Re-export                                        |
-| UI      | `bindingUtils.ts`, `equipment-type-meta.tsx`                                                                       | Selection in the plan, alias, compatible devices |
-| UI      | `HeaterControl.tsx`                                                                                                | Mode badge and selector                          |
-| UI      | `equipment-running.ts`, `useEquipmentState.ts`                                                                     | Resolver                                         |
-| UI      | `EquipmentWidget.tsx`, `MobileWidgetCard.tsx`, `WidgetDetailSheet.tsx`, `ZoneWidget.tsx`, `mobile-click-action.ts` | Resolver, sheet on tap                           |
-| UI      | `CompactEquipmentCard.tsx`                                                                                         | Compact selector                                 |
-| i18n    | `fr.json`, `en.json`                                                                                               | Modes, category                                  |
+| Domain  | File                                                                                                       | Change                                           |
+| ------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Types   | `src/shared/types.ts`, `ui/src/types.ts`                                                                   | Two categories                                   |
+| Shared  | `src/shared/heater-contract.ts` (new)                                                                      | Contract, resolver, binding selection            |
+| Shared  | `src/shared/binding-candidates.ts`                                                                         | Heater candidate uses the selection              |
+| Backend | `src/equipments/equipment-manager.ts`                                                                      | API auto-binding uses the selection              |
+| UI      | `ui/src/lib/heater-contract.ts` (new)                                                                      | Re-export                                        |
+| UI      | `bindingUtils.ts`, `equipment-type-meta.tsx`                                                               | Selection in the plan, alias, compatible devices |
+| UI      | `HeaterControl.tsx`                                                                                        | Mode badge and selector                          |
+| UI      | `equipment-running.ts`, `heaterMode.ts` (new)                                                              | Resolver                                         |
+| UI      | `EquipmentWidget.tsx`, `MobileWidgetCard.tsx`, `WidgetDetailSheet.tsx`, `ZoneWidget.tsx`, `WidgetGrid.tsx` | Resolver, sheet on tap                           |
+| i18n    | `fr.json`, `en.json`                                                                                       | Modes, category                                  |
 
 `ui/src` imports from `src/shared`: check `docker build --target ui-build`, which copies files
 explicitly.

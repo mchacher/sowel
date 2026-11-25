@@ -93,7 +93,7 @@ a plain switch when its pilot wire is off.
 ## Acceptance Criteria
 
 - [x] A relay heater looks and behaves as before, except in the zone widget
-- [x] A pilot heater shows its mode on every heater surface and accepts only its declared modes
+- [x] A pilot heater shows its mode on every heater surface and offers only its declared modes
 - [x] `state` ON/OFF never changes what a pilot heater shows
 - [x] Creating one from UI or API binds the mode and metering, not `state`
 - [x] A metering pilot heater joins the energy breakdown as a submeter
@@ -109,6 +109,10 @@ a plain switch when its pilot wire is off.
 - Data bound without order: mode shown, no control. Order bound without data: controls, mode unknown.
 - Radiator that ignores some orders: the module still reports the mode it sends. Documented, with
   the external-programming setting some radiators need.
+- The device choice is per device: a pilot module plus a separate plug on one heater still binds the
+  plug's `state`, ignored by Sowel but commandable by a recipe.
+- The engine does not check an enum order's value against `enumValues` (unchanged): an API call may
+  send a mode the module does not declare.
 - Several pilot modules on one heater: the first binding is read and commanded.
 
 ## Unknowns to check on hardware

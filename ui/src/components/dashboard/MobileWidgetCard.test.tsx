@@ -420,3 +420,20 @@ describe("MobileWidgetCard — pool cover (#1152)", () => {
     expect(screen.getByText(/^40\s?%$/)).toBeTruthy();
   });
 });
+
+it("says the mode of a pilot-wire heater (spec 216)", () => {
+  const heater = makeEnergyMeter({
+    id: "h-1",
+    type: "heater",
+    dataBindings: [
+      { alias: "wire", category: "pilot_wire_mode", value: "frost_protection" },
+    ] as unknown as EquipmentWithDetails["dataBindings"],
+  });
+  render(
+    <MobileWidgetCard
+      widget={{ id: "w", type: "equipment", equipmentId: "h-1" } as DashboardWidget}
+      equipment={heater}
+    />,
+  );
+  expect(screen.getByText("Frost protection")).toBeTruthy();
+});

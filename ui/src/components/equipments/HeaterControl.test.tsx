@@ -72,15 +72,17 @@ describe("HeaterControl — pilot wire", () => {
 });
 
 describe("HeaterControl — relay", () => {
-  it("keeps its Comfort / Eco toggle: eco turns the relay on", async () => {
+  it.each([
+    [false, /Switch to eco/, "ON"],
+    [true, /Switch to comfort/, "OFF"],
+  ])("keeps its Comfort / Eco toggle: relay %s", async (value, name, sent) => {
     const send = vi.fn().mockResolvedValue(undefined);
     const relay = heater({
-      dataBindings: [{ id: "d", alias: "state", category: "light_state", value: false }],
+      dataBindings: [{ id: "d", alias: "state", category: "light_state", value }],
       orderBindings: [{ id: "o", alias: "state", category: "light_toggle", type: "boolean" }],
     });
     render(<HeaterControl equipment={relay} onExecuteOrder={send} />);
-    expect(screen.getByText("Comfort")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: /Switch to eco/ }));
-    expect(send).toHaveBeenCalledWith("state", "ON");
+    await userEvent.click(screen.getByRole("button", { name }));
+    expect(send).toHaveBeenCalledWith("state", sent);
   });
 });
