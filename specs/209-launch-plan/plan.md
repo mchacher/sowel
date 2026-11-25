@@ -7,6 +7,8 @@ The steps and their content are in [spec.md](spec.md). This file tracks them.
 - [x] Audit of docs.sowel.org and the repository (2026-11-14, read-only)
 - [x] Fix the broken install command on the landing (#1258)
 - [x] Step 0 — Identity: better logo, delivered by spec 210 (#1260)
+- [x] Message architecture and reference pitch, [pitch.md](pitch.md) (2026-11-15)
+- [x] Motion design piece built from the pitch, before the GitHub storefront: the launch film (rendered 2026-11-16; upload under Step 1)
 - [ ] Step 1 — Hygiene
   - [x] GitHub description, topics, homepage, Discussions (2026-11-21)
   - [x] README storefront (#1276, #1282)
@@ -25,7 +27,7 @@ The steps and their content are in [spec.md](spec.md). This file tracks them.
 ## Gates
 
 - Step 1's clean-machine install test passes before step 4 starts.
-- The promise is chosen after two variants are read by about five people, before step 2 is built.
+- The promise wording is read by about five people before step 2 is built (the axis is fixed).
 
 ## Test Plan
 
