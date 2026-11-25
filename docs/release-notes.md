@@ -11,6 +11,25 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.90.x: Pilot-wire heaters, and integrations that say why
+
+### v1.90.0 — 2026-11-25 { #v1-90-0 }
+
+Electric heaters on a pilot-wire module now get their real modes. An integration that cannot connect says why in its panel, and the MQTT plugins suggest the right broker address from Docker. Every thermometer keeps today's minimum and maximum.
+
+**After the update:**
+
+- **Pilot-wire heaters** (NodOn SIN-4-FP-21 and similar, through Zigbee2MQTT 2.10.0): a heater created before this version shows its mode without buttons. Open its missing-bindings panel, add what the module offers, then remove the old `state` binding, or a recipe could still command it. See [Equipments](user/equipments.md).
+- **MQTT plugins**: update them (zigbee2mqtt 2.9.0 or later, lora2mqtt 2.3.0, tasmota 1.1.0, somfy-rts 1.2.0, shelly-mqtt 1.3.0, displays 0.3.0, apsystems 0.3.0) to see the reason a connection fails. A broker on the same machine is reached at `mqtt://host.docker.internal:1883`, which needs the `extra_hosts` lines of the official compose file. See [Preparing the host](user/host-setup.md#point-sowel-at-the-broker).
+
+- Feat (equipments): **pilot-wire modes on the electric heater** (spec 217, #1319). The `heater` equipment covers both wirings: the relay it knew (ON = eco) and pilot-wire modules with up to six modes (Comfort, Comfort -1 °C, Comfort -2 °C, Eco, Frost protection, Off). The page and the sheet show one button per accepted mode, the Home row a selector. A pilot-wire module binds its mode and metering, not its on/off `state`. Zone heating counts heaters as warm in comfort; the thermostats' on/off button no longer reads heaters.
+- Feat (plugins): **an integration says why it is not connected** (spec 216, #1317). Plugins may return one short sentence from `getStatusDetail()`; the integration panel shows it under the status while the plugin is not connected, and reads it again 3 s after a start. `statusDetail` in `GET /api/v1/integrations`. The seven MQTT plugins use it for unresolved names, refused connections, brokers that do not answer and rejected credentials, and prefill the broker URL with `mqtt://host.docker.internal:1883`.
+- Feat (recipes): **today's extremes on every thermometer, and history for recipes** (spec 211, #1315). Any equipment with a temperature binding keeps today's minimum and maximum, not only weather stations. Recipes get a bounded, read-only `ctx.helpers.history.query()` (hourly or daily, up to 7 days, complete periods only).
+- Docs: the host setup page explains which broker URL to use from the container (#1317); the manual links back to the showcase site and its articles (spec 209, #1313); a stable anchor for the spec 214 section (#1281); a roadmap folder with the AI recipes and MCP server ideas, and the spec 215 draft (#1314, #1316); the message architecture of the launch plan (spec 209, #1261).
+- Maintenance (registry): the seven MQTT plugins for spec 216 (#1318), zigbee2mqtt 2.10.0 for pilot-wire modes (#1320).
+
+---
+
 ## 1.89.x: Security hardening
 
 ### v1.89.0 — 2026-11-22 { #v1-89-0 }
