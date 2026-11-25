@@ -363,6 +363,7 @@ Specs are grouped by theme and annotated with status:
 | 212 | Integration Connect button names the plugin and the missing field       | 🟡     | IntegrationDrawer: OAuth button reads "Connect to <plugin>" (no more hard-coded Samsung), Start keeps its name, missing required fields are named and marked, Connect saves unsaved edits first. Shipped in v1.88.0.                                                  |
 | 214 | A recipe publishes data on an equipment                                 | 🟡     | A recipe declares `publishes` on an `equipment` slot and calls `ctx.helpers.equipmentData.publish`; shown as a `virtual:recipe:` binding, historized; appliance surfaces read a plug's watts. Shipped in v1.88.0.                                                     |
 | 215 | Recipes written by AI, as sandboxed scripts                             | 📝     | Idea: the user's AI (own API key) writes a recipe as a script run in QuickJS, reaching only its slot equipments; draft, observing, active; a Create a recipe page with a chat. Not started.                                                                           |
+| 216 | An MCP server for Sowel                                                 | 📝     | Idea: the user's AI reads the home, acts and writes recipes through MCP tools behind scoped, expiring tokens; spec 146 actions wait for a human confirm; no admin tools. Not started.                                                                                 |
 
 ---
 

@@ -342,6 +342,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 212 | Le bouton Connecter nomme le plugin et le champ manquant              | 🟡     | IntegrationDrawer : le bouton OAuth dit « Connecter à <plugin> » (plus de Samsung en dur), Démarrer garde son nom, les champs obligatoires vides sont nommés et marqués. Livrée en v1.88.0.                                                                                   |
 | 214 | Une recette publie une donnée sur un équipement                       | 🟡     | Une recette déclare `publishes` sur un slot `equipment` et appelle `ctx.helpers.equipmentData.publish` ; vu comme un binding `virtual:recipe:`, historisé ; les écrans d'appareil lisent les watts d'une prise. Livrée en v1.88.0.                                            |
 | 215 | Recettes écrites par une IA, en scripts isolés                        | 📝     | Idée : l'IA de l'utilisateur (sa clé d'API) écrit une recette en script exécuté dans QuickJS, limité aux équipements de ses slots ; brouillon, observation, active ; une page Créer une recette avec un chat. Non commencée.                                                  |
+| 216 | Un serveur MCP pour Sowel                                             | 📝     | Idée : l'IA de l'utilisateur lit la maison, agit et écrit des recettes par des outils MCP derrière des jetons limités et qui expirent ; les actions de la spec 146 attendent une confirmation humaine ; aucun outil d'administration. Non commencée.                          |
 
 ---
 
