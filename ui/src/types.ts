@@ -1765,6 +1765,8 @@ export interface IntegrationInfo {
   settings: IntegrationSettingDef[];
   settingValues: Record<string, string>;
   polling?: { lastPollAt: string; intervalMs: number };
+  /** Spec 216: why the integration is not connected, from the plugin. */
+  statusDetail?: string;
   deviceCount: number;
   offlineDeviceCount: number;
   pluginVersion?: string;

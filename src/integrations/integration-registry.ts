@@ -23,6 +23,14 @@ export interface IntegrationPlugin {
   /** Current connection/health status */
   getStatus(): IntegrationStatus;
 
+  /**
+   * Spec 216: one short sentence saying why the integration is not connected
+   * and what to check, e.g. "Cannot resolve host.docker.internal: add
+   * extra_hosts to the compose file". Shown under the status in the
+   * integration panel. Optional; return null when there is nothing to say.
+   */
+  getStatusDetail?(): string | null;
+
   /** Check if required settings are configured */
   isConfigured(): boolean;
 
@@ -65,6 +73,21 @@ export interface IntegrationPlugin {
    * Optional — only for OAuth-based integrations.
    */
   handleOAuthCallback?(code: string): Promise<void>;
+}
+
+/** Longest status detail passed on to the UI (spec 216). */
+export const STATUS_DETAIL_MAX = 300;
+
+/**
+ * Keeps a plugin's status detail to what the panel can show: a non-empty
+ * string, trimmed and capped. Anything else (null, a number a plugin returned
+ * by mistake) means "nothing to say".
+ */
+export function normalizeStatusDetail(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value.trim();
+  if (!text) return undefined;
+  return text.length > STATUS_DETAIL_MAX ? `${text.slice(0, STATUS_DETAIL_MAX - 1)}…` : text;
 }
 
 // ============================================================
@@ -236,6 +259,7 @@ export class IntegrationRegistry {
   getAllInfo(): IntegrationInfo[] {
     return this.getAll().map((plugin) => {
       const polling = plugin.getPollingInfo?.() ?? undefined;
+      const statusDetail = normalizeStatusDetail(plugin.getStatusDetail?.());
       return {
         id: plugin.id,
         name: plugin.name,
@@ -245,6 +269,7 @@ export class IntegrationRegistry {
         settings: plugin.getSettingsSchema(),
         configured: plugin.isConfigured(),
         polling,
+        ...(statusDetail ? { statusDetail } : {}),
         deviceCount: 0,
         offlineDeviceCount: 0,
         supportsOAuth: typeof plugin.getOAuthUrl === "function",

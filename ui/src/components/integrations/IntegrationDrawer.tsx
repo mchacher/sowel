@@ -281,6 +281,20 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
             </div>
           </div>
 
+          {/* Spec 216: the plugin's reason, while it is not connected */}
+          {!isDisabled && !isConnected && integration.statusDetail && (
+            <div
+              role="status"
+              className="flex items-start gap-2 bg-background rounded-md p-3 text-small text-text-secondary"
+            >
+              <AlertTriangle
+                size={14}
+                className={`mt-0.5 shrink-0 ${isError ? "text-error" : "text-warning-ink"}`}
+              />
+              <span className="break-words min-w-0">{integration.statusDetail}</span>
+            </div>
+          )}
+
           {/* Actions */}
           <div>
             <h3 className="text-lead font-semibold text-text mb-3">{t("integrations.actions")}</h3>

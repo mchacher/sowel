@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { IntegrationRegistry } from "./integration-registry.js";
+import { IntegrationRegistry, STATUS_DETAIL_MAX } from "./integration-registry.js";
 import type { IntegrationPlugin } from "./integration-registry.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
@@ -24,6 +24,40 @@ function createMockPlugin(overrides: Partial<IntegrationPlugin> = {}): Integrati
 }
 
 describe("IntegrationRegistry", () => {
+  describe("getAllInfo statusDetail (spec 216)", () => {
+    function infoOf(plugin: IntegrationPlugin) {
+      const registry = new IntegrationRegistry(logger);
+      registry.register(plugin);
+      return registry.getAllInfo()[0];
+    }
+
+    it("passes on the plugin's reason", () => {
+      const info = infoOf(
+        createMockPlugin({
+          getStatus: () => "disconnected",
+          getStatusDetail: () => "  No broker  ",
+        }),
+      );
+      expect(info.statusDetail).toBe("No broker");
+    });
+
+    it("leaves the field out when the plugin has nothing to say", () => {
+      expect("statusDetail" in infoOf(createMockPlugin())).toBe(false);
+      expect("statusDetail" in infoOf(createMockPlugin({ getStatusDetail: () => null }))).toBe(
+        false,
+      );
+      expect("statusDetail" in infoOf(createMockPlugin({ getStatusDetail: () => "   " }))).toBe(
+        false,
+      );
+    });
+
+    it("caps a long reason", () => {
+      const info = infoOf(createMockPlugin({ getStatusDetail: () => "x".repeat(1000) }));
+      expect(info.statusDetail).toHaveLength(STATUS_DETAIL_MAX);
+      expect(info.statusDetail?.endsWith("…")).toBe(true);
+    });
+  });
+
   describe("dispatchOrder", () => {
     it("passes orderKey to plugin", async () => {
       const registry = new IntegrationRegistry(logger);

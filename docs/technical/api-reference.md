@@ -488,13 +488,13 @@ Live updates on the `energy` WebSocket topic: `energy.ev_session.updated` (`{ se
 
 Admin-only routes for managing device integration plugins.
 
-| Method | Path                               | Description                                                     |
-| ------ | ---------------------------------- | --------------------------------------------------------------- |
-| `GET`  | `/api/v1/integrations`             | List all integrations with status, settings, and device counts. |
-| `POST` | `/api/v1/integrations/:id/start`   | Start an integration.                                           |
-| `POST` | `/api/v1/integrations/:id/stop`    | Stop an integration.                                            |
-| `POST` | `/api/v1/integrations/:id/restart` | Restart an integration (stop + start).                          |
-| `POST` | `/api/v1/integrations/:id/refresh` | Force a data refresh (polling integrations only).               |
+| Method | Path                               | Description                                                                                                                                   |
+| ------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/integrations`             | List all integrations with status, settings, and device counts. `statusDetail`, when present, is the plugin's reason for not being connected. |
+| `POST` | `/api/v1/integrations/:id/start`   | Start an integration.                                                                                                                         |
+| `POST` | `/api/v1/integrations/:id/stop`    | Stop an integration.                                                                                                                          |
+| `POST` | `/api/v1/integrations/:id/restart` | Restart an integration (stop + start).                                                                                                        |
+| `POST` | `/api/v1/integrations/:id/refresh` | Force a data refresh (polling integrations only).                                                                                             |
 
 ---
 

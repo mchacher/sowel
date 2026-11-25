@@ -416,13 +416,13 @@ Mises à jour en direct sur le topic WebSocket `energy` : `energy.ev_session.upd
 
 Routes admin uniquement pour gérer les plugins d'intégration de devices.
 
-| Method | Path                               | Description                                                               |
-| ------ | ---------------------------------- | ------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/integrations`             | Liste toutes les intégrations avec statut, réglages et nombre de devices. |
-| `POST` | `/api/v1/integrations/:id/start`   | Démarre une intégration.                                                  |
-| `POST` | `/api/v1/integrations/:id/stop`    | Arrête une intégration.                                                   |
-| `POST` | `/api/v1/integrations/:id/restart` | Redémarre une intégration (stop + start).                                 |
-| `POST` | `/api/v1/integrations/:id/refresh` | Force un refresh des données (intégrations en polling uniquement).        |
+| Method | Path                               | Description                                                                                                                                                                 |
+| ------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/integrations`             | Liste toutes les intégrations avec statut, réglages et nombre de devices. `statusDetail`, s'il est présent, est la raison donnée par le plugin quand il n'est pas connecté. |
+| `POST` | `/api/v1/integrations/:id/start`   | Démarre une intégration.                                                                                                                                                    |
+| `POST` | `/api/v1/integrations/:id/stop`    | Arrête une intégration.                                                                                                                                                     |
+| `POST` | `/api/v1/integrations/:id/restart` | Redémarre une intégration (stop + start).                                                                                                                                   |
+| `POST` | `/api/v1/integrations/:id/refresh` | Force un refresh des données (intégrations en polling uniquement).                                                                                                          |
 
 ---
 
