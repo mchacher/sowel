@@ -16,8 +16,8 @@
 ### Slice C — Plugin (own repository and PR)
 
 - [x] C.1 — `pilot-wire.ts`, parser, orders, tests
-- [ ] C.2 — After the core release and hardware check: version bump, manifest `sowelVersion` set to
-      that core release, release notes naming the missing-bindings panel, tag, registry bump
+- [x] C.2 — Plugin 2.10.0 released and registry bumped, ahead of the core release
+- [ ] C.3 — Core release notes naming the missing-bindings panel; hardware check
 
 ## Test Plan
 

@@ -99,13 +99,14 @@ a plain switch when its pilot wire is off.
 - [x] A metering pilot heater joins the energy breakdown as a submeter
 - [x] The plugin translates the six values both ways
 - [x] No Z2M value or brand in `src/` or `ui/src/` runtime code; no equipment type in the plugin
-- [ ] Checked on a real module (friend's installation) before the registry entry is bumped
+- [ ] Checked on a real module (after the plugin release, owner's decision 2026-11-25)
 
 ## Edge Cases
 
 - New core with old plugin: the point is `generic`; the heater stays a relay one. Create the
   equipment after both updates.
-- New plugin with old core: prevented by the manifest's `sowelVersion`.
+- New plugin with old core: allowed. The categories are ignored, the heater stays a relay one.
+  Requiring an unreleased core would block every Zigbee2MQTT install until it ships.
 - Data bound without order: mode shown, no control. Order bound without data: controls, mode unknown.
 - Radiator that ignores some orders: the module still reports the mode it sends. Documented, with
   the external-programming setting some radiators need.
