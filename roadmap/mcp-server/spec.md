@@ -1,4 +1,4 @@
-# Spec 216: an MCP server for Sowel
+# Roadmap, MCP server: an MCP server for Sowel
 
 **Status**: Idea, 2026-11-25. Light spec for the roadmap; no code yet.
 
@@ -7,9 +7,9 @@
 People already ask their AI assistant (Claude, ChatGPT, a local model) about their home. The Model
 Context Protocol (MCP) is the standard way to hand such an assistant tools. A Sowel MCP server would
 let the user's own AI read the home, explain it, act on it within the rights the user grants, and
-write recipes (spec 215). It is the user's AI talking to the user's Sowel: no Sowel cloud.
+write recipes (roadmap item [AI recipes](../ai-script-recipes/spec.md)). It is the user's AI talking to the user's Sowel: no Sowel cloud.
 
-Spec 215 does not need it (its "Create a recipe" page calls the provider from Sowel itself). This
+The AI recipes item does not need it (its "Create a recipe" page calls the provider from Sowel itself). This
 spec is broader: one MCP server for every use, recipes being one domain among others.
 
 ## What it offers
@@ -23,12 +23,12 @@ spec is broader: one MCP server for every use, recipes being one domain among ot
 | Control          | `send_order` (light, shutter, heating)                                    | Write          | High (acts on the physical) |
 | Modes            | `get_mode`, `set_mode`                                                    | Read and write | High                        |
 | Existing recipes | `list_recipes`, `create_instance`, `update_instance`, `enable`, `disable` | Read and write | High                        |
-| AI recipes (215) | `check_script`, `run_scenarios`, `submit_script`, `get_script`            | Drafts only    | Low                         |
+| AI recipes | `check_script`, `run_scenarios`, `submit_script`, `get_script`            | Drafts only    | Low                         |
 | Diagnostics      | `get_logs`, `get_recipe_log`, `get_device_health`, `get_activity`         | Read           | Low to medium               |
 | Notifications    | `send_notification`                                                       | Write          | Low                         |
 | Administration   | users, plugins, settings, backups                                         | Excluded       | Not exposed                 |
 
-Resources: the script API guide and examples (spec 215), the equipment type contracts. One prompt,
+Resources: the script API guide and examples (roadmap item [AI recipes](../ai-script-recipes/spec.md)), the equipment type contracts. One prompt,
 `create_recipe`, walks the AI through read, ask, write, test, submit.
 
 ## Security
@@ -48,7 +48,7 @@ Rules:
   in one click.
 - An order to an equipment that asks for confirmation (spec 146: gate, door) is never executed from
   MCP directly: it becomes a pending request confirmed by a human in Sowel.
-- Activating an AI recipe stays in the UI (spec 215).
+- Activating an AI recipe stays in the UI (roadmap item [AI recipes](../ai-script-recipes/spec.md)).
 - Rate limit per token; every call logged with its token and shown in Settings.
 
 ## Reach

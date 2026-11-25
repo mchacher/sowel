@@ -1,4 +1,4 @@
-# Spec 215: architecture sketch
+# Roadmap, AI recipes: architecture sketch
 
 **Status**: Idea, 2026-11-22. To be worked out before phase 1.
 

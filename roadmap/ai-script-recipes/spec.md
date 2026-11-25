@@ -1,4 +1,4 @@
-# Spec 215: Recipes written by AI, as sandboxed scripts
+# Roadmap, AI recipes: Recipes written by AI, as sandboxed scripts
 
 **Status**: Idea, 2026-11-22. Mini spec to keep the direction; no code yet.
 

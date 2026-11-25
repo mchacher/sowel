@@ -1,4 +1,4 @@
-# Spec 216: architecture sketch
+# Roadmap, MCP server: architecture sketch
 
 **Status**: Idea, 2026-11-25.
 
@@ -13,4 +13,4 @@
   minutes.
 - **Audit**: one log line per call (token, tool, target), readable in Settings.
 - **UI**: Settings > AI access: on/off, create a token with its scopes and expiry, revoke, last calls.
-- Spec 215 tools plug into the same server when that spec ships.
+- The AI recipes tools plug into the same server when that item ships.
