@@ -412,7 +412,7 @@ Read methods (`getAll`, `getById`, `getDeviceData`, `getDeviceDataValue`, `logSu
 
 ### 4. Errors in lifecycle methods are confined
 
-A throw in `refresh()`, `getStatus()`, `isConfigured()`, `getSettingsSchema()`, `getPollingInfo()`, `getOAuthUrl()` is **logged with your plugin id** and replaced by a safe default (`undefined`, `"error"`, `false`, `[]`, `null`). The Sowel core keeps running.
+A throw in `refresh()`, `getStatus()`, `isConfigured()`, `getSettingsSchema()`, `getPollingInfo()`, `getStatusDetail()`, `getOAuthUrl()` is **logged with your plugin id** and replaced by a safe default (`undefined`, `"error"`, `false`, `[]`, `null`). The Sowel core keeps running.
 
 A throw in `start()`, `stop()`, `executeOrder()` or `handleOAuthCallback()` is still logged but **rethrown** because the caller (registry, recipe engine, OAuth route) needs to react.
 
@@ -467,6 +467,7 @@ interface IntegrationPlugin {
   executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+  getStatusDetail?(): string | null;
 }
 
 type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "error";
@@ -484,6 +485,7 @@ type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "erro
 | `executeOrder()`        | Yes      | Execute a command on a device. Throw an error if the plugin does not support orders.             |
 | `refresh()`             | No       | Force an immediate data refresh (e.g. re-poll the cloud API). Called from the UI refresh button. |
 | `getPollingInfo()`      | No       | Return last poll timestamp and interval. **Implement it if you poll** — see the warning below.   |
+| `getStatusDetail()`     | No       | One short sentence saying why you are not connected and what to check. Shown under the status.   |
 | `getOAuthUrl()`         | No       | Return the authorization URL. Implementing it is what makes the OAuth button appear.             |
 | `handleOAuthCallback()` | No       | Exchange the callback code for tokens.                                                           |
 
@@ -655,6 +657,7 @@ interface IntegrationPlugin {
   executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+  getStatusDetail?(): string | null;
 }
 ```
 

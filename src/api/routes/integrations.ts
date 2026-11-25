@@ -75,6 +75,7 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
         settings,
         settingValues,
         ...(loaded?.polling ? { polling: loaded.polling } : {}),
+        ...(loaded?.statusDetail ? { statusDetail: loaded.statusDetail } : {}),
         deviceCount: allDevices.filter((d) => d.integrationId === id).length,
         offlineDeviceCount: allDevices.filter(
           (d) => d.integrationId === id && d.status === "offline",

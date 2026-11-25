@@ -189,3 +189,41 @@ describe("IntegrationDrawer — Connect button (spec 212)", () => {
     expect(screen.getByRole("button", { name: "Connecter à Tesla" })).toBeTruthy();
   });
 });
+
+describe("IntegrationDrawer — status detail (spec 216)", () => {
+  const reason = "Cannot resolve host.docker.internal: add extra_hosts to the compose file";
+
+  it("shows the plugin's reason while it is not connected", () => {
+    open(tesla({ status: "disconnected", configured: true, statusDetail: reason }));
+    expect(screen.getByText(reason).closest("[role=status]")).toBeTruthy();
+  });
+
+  it("hides it once connected", () => {
+    open(tesla({ status: "connected", configured: true, statusDetail: reason }));
+    expect(screen.queryByText(reason)).toBeNull();
+  });
+
+  it("reads the list again a moment after a start", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { onRefresh } = open(
+        tesla({
+          status: "disconnected",
+          configured: true,
+          settingValues: { client_id: "abc", domain: "d.example", charger: "" },
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Start" }));
+      await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+      vi.advanceTimersByTime(3000);
+      expect(onRefresh).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("hides it on a disabled plugin", () => {
+    open(tesla({ status: "error", enabled: false, statusDetail: reason }));
+    expect(screen.queryByText(reason)).toBeNull();
+  });
+});

@@ -114,7 +114,31 @@ mosquitto_sub -h <ip-de-l'hôte> -p 1883 -t test/#
 mosquitto_pub -h <ip-de-l'hôte> -p 1883 -t test/hello -m "ok"
 ```
 
-Si le message arrive, le broker est joignable. Vous pouvez maintenant pointer le plugin Zigbee2MQTT de Sowel (et Z2M lui-même) vers `mqtt://<ip-de-l'hôte>:1883`.
+Si le message arrive, le broker est joignable. Zigbee2MQTT lui-même utilise `mqtt://<ip-de-l'hôte>:1883`, ou `mqtt://localhost:1883` s'il tourne directement sur l'hôte (pas dans un conteneur).
+
+### Pointer Sowel vers le broker
+
+Sowel tourne dans un conteneur : `localhost` et `127.0.0.1` dans l'URL du broker d'un plugin désignent le conteneur Sowel lui-même, pas l'hôte. Pour joindre un broker sur la même machine, utilisez :
+
+```
+mqtt://host.docker.internal:1883
+```
+
+C'est la valeur que les plugins MQTT proposent par défaut. Ce nom n'existe que si le service `sowel` de votre `docker-compose.yml` le déclare, ce que fait le compose officiel :
+
+```yaml
+services:
+  sowel:
+    # ...
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+```
+
+Une installation faite avec un compose plus ancien peut ne pas avoir ces deux lignes. Ajoutez-les, puis recréez le conteneur avec `docker compose up -d`. Pour vérifier, `docker exec sowel getent hosts host.docker.internal` doit afficher une adresse.
+
+L'IP LAN de l'hôte (`mqtt://192.168.1.10:1883`) fonctionne aussi, tant qu'elle ne change pas : donnez à l'hôte une adresse fixe ou une réservation DHCP. Un broker sur une autre machine se joint toujours par son IP ou son nom.
+
+Quand un plugin n'arrive pas à se connecter, son panneau dans **Administration > Intégrations** en donne la raison sous le statut.
 
 ## Plusieurs coordinateurs Zigbee
 
@@ -193,6 +217,14 @@ Deux appareils portant le même nom deviennent alors silencieusement un seul app
 Ajouter un troisième coordinateur plus tard, ce sont les mêmes trois étapes : un nouveau conteneur avec son volume, son port, son base topic et son canal, puis ce base topic ajouté à la fin de la liste.
 
 ## Dépannage
+
+### Un plugin MQTT reste déconnecté
+
+Son panneau dans **Administration > Intégrations** donne la raison sous le statut (le message est en anglais) :
+
+- **Cannot resolve host.docker.internal** : les lignes `extra_hosts` manquent dans votre compose. Voir [Pointer Sowel vers le broker](#pointer-sowel-vers-le-broker).
+- **Connection refused** : rien n'écoute à cette adresse et sur ce port. Vérifiez que Mosquitto tourne (`systemctl status mosquitto`) et écoute au-delà de localhost (`listener 1883 0.0.0.0`, voir [Ouvrir au LAN](#ouvrir-au-lan)). Avec `localhost` ou `127.0.0.1` dans l'URL, passez à `host.docker.internal`.
+- **Credentials rejected** : vérifiez l'utilisateur et le mot de passe MQTT dans les réglages du plugin.
 
 ### `Error: cannot reach the Docker daemon`
 

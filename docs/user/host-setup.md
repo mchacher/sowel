@@ -114,7 +114,31 @@ mosquitto_sub -h <host-ip> -p 1883 -t test/#
 mosquitto_pub -h <host-ip> -p 1883 -t test/hello -m "ok"
 ```
 
-If the message arrives, the broker is reachable. You can now point the Sowel Zigbee2MQTT plugin (and Z2M itself) to `mqtt://<host-ip>:1883`.
+If the message arrives, the broker is reachable. Zigbee2MQTT itself uses `mqtt://<host-ip>:1883`, or `mqtt://localhost:1883` when it runs directly on the host (not in a container).
+
+### Point Sowel at the broker
+
+Sowel runs in a container, so `localhost` and `127.0.0.1` in a plugin's broker URL mean the Sowel container itself, not the host. To reach a broker on the same machine, use:
+
+```
+mqtt://host.docker.internal:1883
+```
+
+This is the value MQTT plugins fill in by default. The name only exists if the `sowel` service in your `docker-compose.yml` declares it, which the official compose file does:
+
+```yaml
+services:
+  sowel:
+    # ...
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+```
+
+An install made from an older compose file may lack these two lines. Add them, then recreate the container with `docker compose up -d`. To check, `docker exec sowel getent hosts host.docker.internal` must print an address.
+
+The host's LAN IP (`mqtt://192.168.1.10:1883`) works too, as long as it does not change: give the host a fixed address or a DHCP reservation. A broker on another machine is always reached by its IP or name.
+
+When a plugin cannot connect, its panel in **Administration > Integrations** says why under the status.
 
 ## Several Zigbee coordinators
 
@@ -193,6 +217,14 @@ Two devices sharing a name then silently become a single Sowel device, so only d
 Adding a third coordinator later is the same three steps: a new container with its own volume, port, base topic and channel, then that base topic appended to the list.
 
 ## Troubleshooting
+
+### An MQTT plugin stays disconnected
+
+Its panel in **Administration > Integrations** gives the reason under the status:
+
+- **Cannot resolve host.docker.internal**: the `extra_hosts` lines are missing from your compose file. See [Point Sowel at the broker](#point-sowel-at-the-broker).
+- **Connection refused**: nothing listens on that address and port. Check that Mosquitto runs (`systemctl status mosquitto`) and listens beyond localhost (`listener 1883 0.0.0.0`, see [Open to the LAN](#open-to-the-lan)). With `localhost` or `127.0.0.1` in the URL, switch to `host.docker.internal`.
+- **Credentials rejected**: check the MQTT username and password in the plugin settings.
 
 ### `Error: cannot reach the Docker daemon`
 
