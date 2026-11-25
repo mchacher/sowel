@@ -17,6 +17,7 @@ import {
   SunDim,
   Thermometer,
   ToggleRight,
+  WashingMachine,
   Waves,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +47,7 @@ export const RECIPE_ICONS: Record<string, LucideIcon> = {
   SunDim,
   Thermometer,
   ToggleRight,
+  WashingMachine,
   Waves,
 };
 

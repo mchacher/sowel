@@ -40,17 +40,27 @@ import {
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import { resolveFreshnessBudget } from "../shared/reading-freshness.js";
 import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
+import { HEATER_CATEGORY_ALIASES, pilotWireBindingKeys } from "../shared/heater-contract.js";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-contract.js";
 import type { Device } from "../shared/types.js";
+import { orderValueShapeError } from "./order-value-shape.js";
+import {
+  RecipeOutputs,
+  isCoreVirtualAlias,
+  recipeOutputBindingId,
+  type RecipeOutput,
+  type RecipeOutputTarget,
+} from "./recipe-outputs.js";
 
 /**
- * Equipment types whose contract binds points by category (specs 182, 183):
+ * Equipment types whose contract binds points by category (specs 182, 183, 217):
  * category → contract alias, applied first on auto-binding.
  */
 const CONTRACT_CATEGORY_ALIASES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   ev_charger: EV_CHARGER_CATEGORY_ALIASES,
   electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
+  heater: HEATER_CATEGORY_ALIASES,
 };
 
 /** A function that returns computed data entries for a given equipment. */
@@ -165,6 +175,11 @@ export class EquipmentManager {
   /** Tracks integrations with recent order failures — for alarm raise/resolve. */
   private failedIntegrations = new Set<string>();
 
+  /** Spec 214 — data running recipe instances publish on equipments. */
+  private recipeOutputs = new RecipeOutputs();
+  /** Refusals already logged, so a recipe publishing every 30 s logs one line, not thousands. */
+  private recipeDenialsLogged = new Set<string>();
+
   constructor(
     db: Database.Database,
     eventBus: EventBus,
@@ -226,6 +241,14 @@ export class EquipmentManager {
   }
 
   /** Collect computed data from all registered providers for a given equipment. */
+  /**
+   * Spec 211 — the computed data entries of an equipment alone, without the
+   * bindings, orders and status `getByIdWithDetails` also builds.
+   */
+  getComputedDataFor(equipmentId: string): ComputedDataEntry[] {
+    return this.getComputedData(equipmentId);
+  }
+
   private getComputedData(equipmentId: string): ComputedDataEntry[] {
     const entries: ComputedDataEntry[] = [];
     for (const provider of this.computedDataProviders) {
@@ -482,14 +505,20 @@ export class EquipmentManager {
         }
       };
 
+      // Spec 217 — a pilot-wire heater binds its mode and metering only.
+      const pilot =
+        input.type === "heater" ? pilotWireBindingKeys(device.data, device.orders) : null;
+
       // Bind all device data (sensors/state)
       for (const data of contractFirst(device.data)) {
+        if (pilot && !pilot.dataKeys.includes(data.key)) continue;
         const alias = vmcAlias[data.key] ?? contractAlias(data.category) ?? data.key;
         bindWithFallback((a) => this.addDataBinding(equipment.id, data.id, a), alias, data.key);
       }
 
       // Bind all device orders (commands)
       for (const order of contractFirst(device.orders)) {
+        if (pilot && !pilot.orderKeys.includes(order.key)) continue;
         const alias =
           input.type === "gate"
             ? "command"
@@ -891,6 +920,18 @@ export class EquipmentManager {
       bindings.unshift(this.buildCoverStateBinding(equipmentId, state));
     }
 
+    // Spec 214 — what recipes publish on this equipment, unless a device
+    // binding carries the same alias (a device always wins).
+    const deviceAliases = new Set(rows.map((r) => r.alias));
+    for (const output of this.recipeOutputs.forEquipment(equipmentId)) {
+      if (
+        !deviceAliases.has(output.def.alias) &&
+        !(equipment && isCoreVirtualAlias(equipment.type, output.def.alias))
+      ) {
+        bindings.unshift(this.buildRecipeOutputBinding(output));
+      }
+    }
+
     // Annotate staleness on streaming bindings (spec 116).
     const now = Date.now();
     // Which integration backs each binding, from the join above rather than a
@@ -1079,6 +1120,23 @@ export class EquipmentManager {
   }
 
   /**
+   * Issue #1310 — the same shape check runOrder applies, without sending
+   * anything. For a caller that stores a value to send later (a timed
+   * action's revert), so a value that would be refused at the deadline is
+   * refused now, while the user is still there to see it. Throws
+   * EquipmentError 400; an alias with no binding (the VMC `speed` logical
+   * order) is left to runOrder, which validates it on its own path.
+   */
+  validateOrderValue(equipmentId: string, alias: string, value: unknown): void {
+    const bindings = this.stmts.getOrderBindingsByAlias.all(
+      equipmentId,
+      alias,
+    ) as OrderBindingJoinRow[];
+    const shapeError = orderValueShapeError(bindings, value);
+    if (shapeError) throw new EquipmentError(shapeError, 400);
+  }
+
+  /**
    * `partOf` names the logical order this one is a step of (a VMC `speed`
    * decomposed into relay orders). It rides on the step's outcome event so
    * the activity feed shows the logical order once instead of every step
@@ -1113,6 +1171,15 @@ export class EquipmentManager {
 
     if (bindings.length === 0) {
       throw new EquipmentError(`Order alias not found: ${alias}`, 404);
+    }
+
+    // Issue #1310 — refuse a value whose shape would let a plugin write device
+    // attributes beyond this order (an arbitrary object becomes a whole z2m
+    // payload). One gate for every caller: UI, zone orders, recipes, timed
+    // actions and delivery retries all come through here.
+    const shapeError = orderValueShapeError(bindings, value);
+    if (shapeError) {
+      throw new EquipmentError(shapeError, 400);
     }
 
     // Spec 154 — per-equipment command inversion for a shutter-family motor
@@ -1782,6 +1849,181 @@ export class EquipmentManager {
       lastChanged: new Date().toISOString(),
       stale: false, // virtual binding, always fresh
     };
+  }
+
+  /** Spec 214 — the virtual binding of a value a recipe publishes. */
+  private buildRecipeOutputBinding(output: RecipeOutput): DataBindingWithValue {
+    const { def } = output;
+    return {
+      id: recipeOutputBindingId(output.instanceId, def.alias),
+      equipmentId: output.equipmentId,
+      deviceDataId: "",
+      alias: def.alias,
+      deviceId: "",
+      // Where the value comes from, for the surfaces that name a binding's source.
+      deviceName: output.recipeName,
+      key: def.alias,
+      type: def.type as DataType,
+      category: def.category,
+      ...(def.enumValues && { enumValues: [...def.enumValues] }),
+      value: output.value,
+      unit: def.unit,
+      lastUpdated: output.lastUpdated,
+      lastChanged: output.lastChanged,
+      stale: false,
+    };
+  }
+
+  // ============================================================
+  // Recipe outputs (spec 214)
+  // ============================================================
+
+  /** Aliases bound to a device on this equipment. */
+  private deviceBoundAliases(equipmentId: string): Set<string> {
+    const rows = this.stmts.getDataBindingsWithValues.all(equipmentId) as DataBindingJoinRow[];
+    return new Set(rows.map((r) => r.alias));
+  }
+
+  /**
+   * The outputs an instance may take, from what its params name (spec 214
+   * FR2). An equipment that no longer exists is skipped, so one deleted member
+   * of a list slot does not stop the instance. Throws a 400 when an output
+   * would sit on a device-bound alias, an alias the core derives itself, an
+   * alias another running instance publishes, or twice on one equipment.
+   * Conflicts with instances enabled but not running are the RecipeManager's.
+   */
+  checkPublishable(
+    instanceId: string,
+    targets: readonly RecipeOutputTarget[],
+  ): RecipeOutputTarget[] {
+    const kept: RecipeOutputTarget[] = [];
+    const seen = new Set<string>();
+    for (const target of targets) {
+      const { equipmentId, def } = target;
+      const equipment = this.getById(equipmentId);
+      if (!equipment) continue;
+      const key = `${equipmentId}\u0000${def.alias}`;
+      if (seen.has(key)) {
+        throw new EquipmentError(
+          `"${equipment.name}" would get "${def.alias}" twice from this instance`,
+          400,
+        );
+      }
+      seen.add(key);
+      if (isCoreVirtualAlias(equipment.type, def.alias)) {
+        throw new EquipmentError(
+          `"${equipment.name}" derives "${def.alias}" itself: a recipe cannot publish it`,
+          400,
+        );
+      }
+      if (this.deviceBoundAliases(equipmentId).has(def.alias)) {
+        throw new EquipmentError(
+          `"${equipment.name}" already has "${def.alias}" from a device: a recipe cannot publish it`,
+          400,
+        );
+      }
+      const owner = this.recipeOutputs.get(equipmentId, def.alias);
+      if (owner && owner.instanceId !== instanceId) {
+        throw new EquipmentError(
+          `"${equipment.name}" already gets "${def.alias}" from recipe instance ${owner.instanceId} (${owner.recipeName})`,
+          400,
+        );
+      }
+      kept.push(target);
+    }
+    return kept;
+  }
+
+  /** An instance starts: its outputs appear, `null` until published (FR4.4). */
+  attachRecipeOutputs(
+    instanceId: string,
+    recipeName: string,
+    targets: readonly RecipeOutputTarget[],
+  ): void {
+    for (const equipmentId of this.recipeOutputs.attach(instanceId, recipeName, targets)) {
+      this.emitEquipmentUpdated(equipmentId);
+    }
+  }
+
+  /**
+   * An instance stops: its outputs go (FR4.3). A value it left is cleared for
+   * live consumers (`null`), so a running state does not outlive its recipe.
+   */
+  detachRecipeOutputs(instanceId: string): void {
+    for (const key of this.recipeDenialsLogged) {
+      if (key.startsWith(`${instanceId}\u0000`)) this.recipeDenialsLogged.delete(key);
+    }
+    const removed = this.recipeOutputs.detach(instanceId);
+    for (const output of removed) {
+      if (output.value !== null) {
+        this.eventBus.emit({
+          type: "equipment.data.changed",
+          equipmentId: output.equipmentId,
+          alias: output.def.alias,
+          value: null,
+          previous: output.value,
+        });
+      }
+    }
+    for (const equipmentId of new Set(removed.map((o) => o.equipmentId))) {
+      this.emitEquipmentUpdated(equipmentId);
+    }
+  }
+
+  /**
+   * A recipe instance publishes a value (spec 214 FR3). Never throws: a refusal
+   * is returned and logged.
+   */
+  publishRecipeData(
+    instanceId: string,
+    equipmentId: string,
+    alias: string,
+    value: unknown,
+  ): { ok: true } | { ok: false; reason: string } {
+    const deny = (reason: string) => {
+      const key = `${instanceId}\u0000${equipmentId}\u0000${alias}\u0000${reason}`;
+      if (!this.recipeDenialsLogged.has(key)) {
+        // Bounded: a recipe building aliases on the fly cannot grow it forever.
+        if (this.recipeDenialsLogged.size >= 1000) this.recipeDenialsLogged.clear();
+        this.recipeDenialsLogged.add(key);
+        this.logger.warn(
+          { instanceId, equipmentId, alias, reason },
+          "Recipe denied publishing data",
+        );
+      }
+      return { ok: false as const, reason };
+    };
+    try {
+      const equipment = this.getById(equipmentId);
+      if (!equipment) return deny("no such equipment");
+      if (isCoreVirtualAlias(equipment.type, alias)) {
+        return deny(`"${alias}" is derived by the core on this equipment`);
+      }
+      if (this.deviceBoundAliases(equipmentId).has(alias)) {
+        return deny(`"${alias}" is bound to a device on this equipment`);
+      }
+      const result = this.recipeOutputs.set(
+        instanceId,
+        equipmentId,
+        alias,
+        value,
+        new Date().toISOString(),
+      );
+      if (!result.ok) return deny(result.reason);
+      if (result.changed) {
+        this.eventBus.emit({
+          type: "equipment.data.changed",
+          equipmentId,
+          alias,
+          value,
+          previous: result.previous,
+        });
+      }
+      return { ok: true };
+    } catch (err) {
+      this.logger.error({ err, instanceId, equipmentId, alias }, "Recipe data publish failed");
+      return { ok: false, reason: "internal error" };
+    }
   }
 
   /** Build a virtual DataBindingWithValue for pool cover state. */

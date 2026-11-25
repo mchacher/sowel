@@ -314,12 +314,12 @@ Three radii and full (spec 196, decision pr7-rayons). They replaced twelve hand-
 
 ## 5. Shadow tokens (elevation)
 
-| Token       | Hybrid value     | Dark       | Tailwind    | Used for                                      |
-| ----------- | ---------------- | ---------- | ----------- | --------------------------------------------- |
-| `--sh-1`    | subtle, 1–3 px   | near-black | `shadow-sm` | —                                             |
-| `--sh-card` | `var(--sh-1)`    | `none`     | (in `card`) | Every card                                    |
-| `--sh-2`    | medium, 4–14 px  | near-black | `shadow-md` | Hover on a clickable card, chart tooltips     |
-| `--sh-3`    | strong, 24–56 px | near-black | `shadow-lg` | Modals, bottom sheets, menus, pickers, toasts |
+| Token       | Hybrid value     | Dark       | Tailwind    | Used for                                                         |
+| ----------- | ---------------- | ---------- | ----------- | ---------------------------------------------------------------- |
+| `--sh-1`    | subtle, 1–3 px   | near-black | `shadow-sm` | —                                                                |
+| `--sh-card` | `var(--sh-1)`    | `none`     | (in `card`) | Every card                                                       |
+| `--sh-2`    | medium, 4–14 px  | near-black | `shadow-md` | Hover on a clickable card, chart tooltips                        |
+| `--sh-3`    | strong, 24–56 px | near-black | `shadow-lg` | Modals, bottom sheets, menus, pickers, toasts, the phone tab bar |
 
 ### 5.1 Cards, wells and floating layers
 

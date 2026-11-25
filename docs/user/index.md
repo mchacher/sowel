@@ -26,38 +26,42 @@ This separation means you think about _rooms and functions_, not about Zigbee ad
 
 ## Guide sections
 
+<!-- prettier-ignore-start -->
+
 <div class="grid cards" markdown>
 
-- **[Preparing the Host](host-setup.md)**
+-   **[Preparing the Host](host-setup.md)**
 
-  Docker and Mosquitto setup on Raspberry Pi, Debian or Ubuntu. Skip if you already have both.
+    Docker and Mosquitto setup on Raspberry Pi, Debian or Ubuntu. Skip if you already have both.
 
-- **[Getting Started](getting-started.md)**
+-   **[Getting Started](getting-started.md)**
 
-  Installation, first login, and initial configuration.
+    Installation, first login, and initial configuration.
 
-- **[Equipments](equipments.md)**
+-   **[Equipments](equipments.md)**
 
-  Creating and managing equipments, binding to devices, equipment types.
+    Creating and managing equipments, binding to devices, equipment types.
 
-- **[Dashboard](dashboard.md)**
+-   **[Dashboard](dashboard.md)**
 
-  Widgets, customization, edit mode.
+    Widgets, customization, edit mode.
 
-- **[Zones](zones.md)**
+-   **[Zones](zones.md)**
 
-  Creating zones, assigning equipments, automatic aggregation.
+    Creating zones, assigning equipments, automatic aggregation.
 
-- **[Modes](modes.md)**
+-   **[Modes](modes.md)**
 
-  Operating profiles, impacts, calendar scheduling.
+    Operating profiles, impacts, calendar scheduling.
 
-- **[Energy Monitoring](energy.md)**
+-   **[Energy Monitoring](energy.md)**
 
-  Consumption tracking, HP/HC tariffs, autoconsumption.
+    Consumption tracking, HP/HC tariffs, autoconsumption.
 
-- **[Remote Access](remote-access.md)**
+-   **[Remote Access](remote-access.md)**
 
-  Secure access from outside your home network.
+    Secure access from outside your home network.
 
 </div>
+
+<!-- prettier-ignore-end -->

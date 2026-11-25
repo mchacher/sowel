@@ -412,7 +412,7 @@ Read methods (`getAll`, `getById`, `getDeviceData`, `getDeviceDataValue`, `logSu
 
 ### 4. Errors in lifecycle methods are confined
 
-A throw in `refresh()`, `getStatus()`, `isConfigured()`, `getSettingsSchema()`, `getPollingInfo()`, `getOAuthUrl()` is **logged with your plugin id** and replaced by a safe default (`undefined`, `"error"`, `false`, `[]`, `null`). The Sowel core keeps running.
+A throw in `refresh()`, `getStatus()`, `isConfigured()`, `getSettingsSchema()`, `getPollingInfo()`, `getStatusDetail()`, `getOAuthUrl()` is **logged with your plugin id** and replaced by a safe default (`undefined`, `"error"`, `false`, `[]`, `null`). The Sowel core keeps running.
 
 A throw in `start()`, `stop()`, `executeOrder()` or `handleOAuthCallback()` is still logged but **rethrown** because the caller (registry, recipe engine, OAuth route) needs to react.
 
@@ -467,6 +467,7 @@ interface IntegrationPlugin {
   executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+  getStatusDetail?(): string | null;
 }
 
 type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "error";
@@ -484,6 +485,7 @@ type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "erro
 | `executeOrder()`        | Yes      | Execute a command on a device. Throw an error if the plugin does not support orders.             |
 | `refresh()`             | No       | Force an immediate data refresh (e.g. re-poll the cloud API). Called from the UI refresh button. |
 | `getPollingInfo()`      | No       | Return last poll timestamp and interval. **Implement it if you poll** — see the warning below.   |
+| `getStatusDetail()`     | No       | One short sentence saying why you are not connected and what to check. Shown under the status.   |
 | `getOAuthUrl()`         | No       | Return the authorization URL. Implementing it is what makes the OAuth button appear.             |
 | `handleOAuthCallback()` | No       | Exchange the callback code for tokens.                                                           |
 
@@ -655,6 +657,7 @@ interface IntegrationPlugin {
   executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+  getStatusDetail?(): string | null;
 }
 ```
 
@@ -929,6 +932,8 @@ interface DiscoveredDevice {
 ```
 
 **Boolean orders and wire values.** If the device does not accept JSON booleans on the wire (Zigbee2MQTT `binary` exposes expect `"ON"`/`"OFF"`, some locks expect `"LOCK"`/`"UNLOCK"`), declare `valueOn`/`valueOff` at discovery time. The core order dispatcher then maps boolean-ish values (`true`/`false`, `"on"`/`"off"`, `"true"`/`"false"`, `1`/`0`, and the wire values themselves case-insensitively) onto the declared wire representation before calling your `executeOrder()`, which can stay a pass-through. Orders without `valueOn`/`valueOff` receive the caller's value untouched.
+
+**Pilot-wire modules** (spec 217). A module that carries the order of a French pilot wire publishes it as an `enum` data point of category `pilot_wire_mode` and an `enum` order of category `set_pilot_wire_mode`, whatever the key. Translate your protocol's values to `comfort`, `comfort_minus_1`, `comfort_minus_2`, `eco`, `frost_protection`, `off`, in the payloads, the orders and `enumValues`, and declare only the modes the module accepts. A plain relay on a pilot wire stays a relay: Sowel owns its ON = eco convention.
 
 **Inbound values are normalized once, at ingestion** (spec 150). `updateDeviceData` coerces what you push to the type you declared for that key at discovery, so a `boolean` data point declared as such stores `true` whether you pushed `true`, `"ON"` or `1`. A value it cannot coerce is stored raw with a warn-once. Polarity-ambiguous vocabularies (`OPEN`/`CLOSED`) are deliberately never guessed. Declare the type honestly at discovery and push whatever your transport gives you.
 

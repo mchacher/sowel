@@ -908,3 +908,49 @@ describe("electric_vehicle auto-binding (spec 183)", () => {
     );
   });
 });
+
+describe("heater bindings (spec 217)", () => {
+  const module = {
+    id: "dev-1",
+    name: "Module",
+    data: [
+      { id: "d1", key: "state", category: "light_state", type: "boolean" },
+      { id: "d2", key: "power", category: "power", type: "number" },
+      { id: "d3", key: "order_wire", category: "pilot_wire_mode", type: "enum" },
+      { id: "d4", key: "power_on_behavior", category: "generic", type: "enum" },
+    ],
+    orders: [
+      { id: "o1", key: "state", category: "light_toggle", type: "boolean" },
+      { id: "o2", key: "order_wire", category: "set_pilot_wire_mode", type: "enum" },
+    ],
+  } as unknown as DeviceWithDetails;
+  const expected = [
+    ["data", "order_wire", "pilot_wire_mode"],
+    ["data", "power", "power"],
+    ["order", "order_wire", "pilot_wire_mode"],
+  ];
+
+  it("plans the mode under its alias and the metering, not the state", () => {
+    const plan = computeBindingPlan([module], "heater");
+    expect(plan.map((p) => [p.kind, p.key, p.alias])).toEqual(expected);
+  });
+
+  it("offers the same points as missing on an existing heater", () => {
+    const missing = computeMissingBindings([module], "heater", [], []);
+    expect(missing.map((p) => [p.kind, p.key, p.alias])).toEqual(expected);
+  });
+
+  it("leaves a relay heater as before", () => {
+    const relay = {
+      ...module,
+      data: module.data.filter((d) => d.key !== "order_wire"),
+      orders: module.orders.filter((o) => o.key !== "order_wire"),
+    } as DeviceWithDetails;
+    const plan = computeBindingPlan([relay], "heater");
+    expect(plan.map((p) => [p.kind, p.key, p.alias])).toEqual([
+      ["data", "state", "state"],
+      ["data", "power_on_behavior", "power_on_behavior"],
+      ["order", "state", "state"],
+    ]);
+  });
+});

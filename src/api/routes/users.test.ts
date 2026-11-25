@@ -8,9 +8,17 @@ import { installValidationErrorHandler, validationAjvOptions } from "../error-ha
 // PUT /users/:id. These routes are admin-gated by an onRequest hook (runs before
 // schema validation), so the test app injects an admin request.auth first.
 
+const revoked: string[] = [];
+
 function makeDeps(overrides: { userExists?: boolean } = {}) {
   const user = { id: "u-1", username: "bob", displayName: "Bob", role: "standard", enabled: true };
   return {
+    authService: {
+      revokeUserSessions: (userId: string) => {
+        revoked.push(userId);
+        return 1;
+      },
+    },
     userManager: {
       getAll: () => [user],
       getById: () => (overrides.userExists === false ? null : user),
@@ -18,6 +26,7 @@ function makeDeps(overrides: { userExists?: boolean } = {}) {
       createUser: async () => user,
       updateUser: () => user,
     },
+    mfaService: { disable: () => undefined },
     auditLogger: { log: () => undefined },
     logger: createLogger("silent").logger,
   } as unknown as Parameters<typeof registerUserRoutes>[1];
@@ -123,5 +132,40 @@ describe("PUT /api/v1/users/:id — input validation (characterization, #482)", 
     await app.ready();
     const res = await put({ displayName: "Bobby" });
     expect(res.statusCode).toBe(200);
+  });
+});
+
+describe("PUT /api/v1/users/:id ends the user's sessions (issue #1305)", () => {
+  let app: ReturnType<typeof Fastify>;
+  beforeEach(async () => {
+    revoked.length = 0;
+    app = buildApp();
+    await app.ready();
+  });
+  afterEach(async () => await app.close());
+
+  const put = (body: unknown) =>
+    app.inject({ method: "PUT", url: "/api/v1/users/u-1", payload: body });
+
+  it("on a role change", async () => {
+    expect((await put({ role: "admin" })).statusCode).toBe(200);
+    expect(revoked).toEqual(["u-1"]);
+  });
+
+  it("on disable", async () => {
+    expect((await put({ enabled: false })).statusCode).toBe(200);
+    expect(revoked).toEqual(["u-1"]);
+  });
+
+  it("not on a display-name change or a no-op role/enabled", async () => {
+    await put({ displayName: "Robert" });
+    await put({ role: "standard", enabled: true });
+    expect(revoked).toEqual([]);
+  });
+
+  it("on an admin MFA reset (the lost-device path)", async () => {
+    const res = await app.inject({ method: "DELETE", url: "/api/v1/users/u-1/mfa" });
+    expect(res.statusCode).toBe(204);
+    expect(revoked).toEqual(["u-1"]);
   });
 });

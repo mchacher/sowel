@@ -469,6 +469,17 @@ describe("wrapPluginMethods", () => {
     expect(wrapped.getOAuthUrl).toBeUndefined();
     expect(wrapped.handleOAuthCallback).toBeUndefined();
     expect(wrapped.getPollingInfo).toBeUndefined();
+    expect(wrapped.getStatusDetail).toBeUndefined();
+  });
+
+  it("returns null when getStatusDetail() throws (spec 216)", () => {
+    const plugin = makeStubPlugin({
+      getStatusDetail: () => {
+        throw new Error("detail boom");
+      },
+    });
+    const wrapped = wrapPluginMethods(plugin, "stub", logger);
+    expect(wrapped.getStatusDetail?.()).toBeNull();
   });
 
   it("wraps optional methods that are present", () => {
@@ -476,8 +487,10 @@ describe("wrapPluginMethods", () => {
       refresh: async () => {},
       getOAuthUrl: () => "https://example.com",
       getPollingInfo: () => ({ lastPollAt: new Date().toISOString(), intervalMs: 1000 }),
+      getStatusDetail: () => "Broker refused the connection",
     });
     const wrapped = wrapPluginMethods(plugin, "stub", logger);
+    expect(wrapped.getStatusDetail?.()).toBe("Broker refused the connection");
     expect(wrapped.refresh).toBeDefined();
     expect(wrapped.getOAuthUrl?.()).toBe("https://example.com");
     expect(wrapped.getPollingInfo?.()).toMatchObject({ intervalMs: 1000 });

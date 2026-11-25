@@ -274,6 +274,8 @@ export class CapacityArbiter {
     state: ArbiterRunState;
     availableSurplusW: number | null;
     dormant: boolean;
+    /** #1262 — the claims serving their engage hold, and since when. */
+    holding: string;
   } | null = null;
   /**
    * ~5 min samples of the signed grid surplus for the day-timeline curve
@@ -285,6 +287,11 @@ export class CapacityArbiter {
   private lastSurplusSampleAt = 0;
 
   private tick: NodeJS.Timeout | null = null;
+  /** #1262 — one pass at the earliest engage-hold deadline, so a covered
+   *  claim is granted when its countdown reaches zero rather than at the next
+   *  tick or meter sample. */
+  private engageTimer: NodeJS.Timeout | null = null;
+  private engageTimerAt: number | null = null;
   private unsubscribes: Array<() => void> = [];
 
   private readonly shadowMode: boolean;
@@ -374,6 +381,7 @@ export class CapacityArbiter {
   stop(): void {
     if (this.tick) clearInterval(this.tick);
     this.tick = null;
+    this.clearEngageTimer();
     for (const u of this.unsubscribes) u();
     this.unsubscribes = [];
   }
@@ -1197,6 +1205,7 @@ export class CapacityArbiter {
         info.watts = pendingClaim.watts;
         info.shortfallW = shortfalls.get(id) ?? 0;
         info.reasonWaiting = this.pendingReason(pendingClaim, headroomW);
+        info.engageAtIso = this.engageAt(pendingClaim);
         info.instanceId = pendingClaim.instanceId;
         if (pendingClaim.mod) info.modulation = { ...pendingClaim.mod.range };
       } else if (this.unclaimedRunning.has(id)) {
@@ -1373,6 +1382,8 @@ export class CapacityArbiter {
       // #807 - the roster spells out `need = watts + margin - tolerated` under
       // the table; the margin appears in no other user-facing place.
       engageMarginW: this.config.engageMarginW,
+      // #1262 — the roster draws the hold's progress against its length.
+      engageHoldS: this.config.engageHoldS,
       dormant,
       // #563 — the user-facing figure is the TRUE signed grid balance
       // (headroomW ≡ exportW: >0 exporting, <0 importing), NOT the
@@ -1432,7 +1443,10 @@ export class CapacityArbiter {
   }
 
   private runEvaluate(): void {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled) {
+      this.clearEngageTimer();
+      return;
+    }
     const now = Date.now();
 
     // Expire suspensions. Journaled (#535): a silent lapse left the timeline
@@ -1461,6 +1475,13 @@ export class CapacityArbiter {
       // and fire a spurious `revoke-not-honored` the instant data returns
       // (review #9). A stale meter revoked everything anyway.
       this.watchdogs = [];
+      // #1262 — a hold proves the surplus lasted; through an outage nothing
+      // does. Left armed, the roster froze at 0:00 for the whole outage and
+      // the first sample back granted at once on a pre-outage surplus.
+      for (const c of this.claims.values()) {
+        if (c.status === "pending") c.engageSince = null;
+      }
+      this.clearEngageTimer();
       this.emitStatus();
       return;
     }
@@ -1656,7 +1677,53 @@ export class CapacityArbiter {
       }
     }
 
+    this.armEngageTimer(now);
     this.emitStatus(exportW);
+  }
+
+  /**
+   * #1262 — the grant pass only runs on a tick or a meter sample, so a claim
+   * whose hold matured between two of them waited up to `TICK_MS` past the
+   * countdown the roster shows. Arm one timeout at the earliest deadline;
+   * the pass it runs re-arms for the next one. A deadline that no longer
+   * holds (surplus gone, claim granted or released) costs one idle pass.
+   */
+  private armEngageTimer(now: number): void {
+    let at: number | null = null;
+    for (const c of this.claims.values()) {
+      if (c.status !== "pending" || c.engageSince === null) continue;
+      const due = c.engageSince + this.config.engageHoldS * 1000;
+      if (at === null || due < at) at = due;
+    }
+    if (at === this.engageTimerAt) return;
+    this.clearEngageTimer();
+    if (at === null) return;
+    this.engageTimerAt = at;
+    this.engageTimer = setTimeout(
+      () => {
+        this.engageTimer = null;
+        this.engageTimerAt = null;
+        try {
+          this.evaluate();
+        } catch (err) {
+          this.logger.error({ err }, "Arbiter evaluation failed");
+        }
+      },
+      Math.max(0, at - now),
+    );
+  }
+
+  private clearEngageTimer(): void {
+    if (this.engageTimer) clearTimeout(this.engageTimer);
+    this.engageTimer = null;
+    this.engageTimerAt = null;
+  }
+
+  /** #1262 — when a covered claim's engage hold ends, or undefined when the
+   *  claim is not serving one (not covered, or blocked by something else). */
+  private engageAt(claim: ClaimRecord): string | undefined {
+    if (claim.status !== "pending" || claim.engageSince === null) return undefined;
+    return new Date(claim.engageSince + this.config.engageHoldS * 1000).toISOString();
   }
 
   // ── Accounting helpers ──────────────────────────────────────
@@ -2517,16 +2584,24 @@ export class CapacityArbiter {
     // tab keeps the deficit sticker (and its loads "waiting") until the next
     // 25 W move, which after sunset can be minutes away.
     const dormant = this.isDormant(quantized);
+    // #1262 — a claim starting or dropping its engage hold changes the
+    // roster's countdown with no 25 W move behind it, so it counts as a change.
+    const holding = [...this.claims.values()]
+      .filter((c) => c.status === "pending" && c.engageSince !== null)
+      .map((c) => `${c.equipmentId}@${c.engageSince}`)
+      .sort()
+      .join(",");
     const prev = this.lastStatus;
     if (
       prev &&
       prev.state === state &&
       prev.availableSurplusW === availableSurplusW &&
-      prev.dormant === dormant
+      prev.dormant === dormant &&
+      prev.holding === holding
     ) {
       return;
     }
-    this.lastStatus = { state, availableSurplusW, dormant };
+    this.lastStatus = { state, availableSurplusW, dormant, holding };
     this.emitEvent({ type: "energy.arbiter.status", state, availableSurplusW });
   }
 

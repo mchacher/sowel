@@ -1,5 +1,9 @@
 # Spec 134 — Daily min/max temperature on weather equipments
 
+> **Widened by [spec 211](../211-recipe-history-read/spec.md)**: the same tracker now also covers
+> the `temperature` reading and any `temperature_outdoor` binding of every other equipment type,
+> and `lastUpdated` follows every sample.
+
 ## Context
 
 Spec 114 (Weather station UX) reworked the weather widgets but explicitly

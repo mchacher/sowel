@@ -33,7 +33,7 @@ async function buildApp() {
   registerAuthMiddleware(app, { authService, userManager, logger });
   registerAuthRoutes(app, { authService, userManager, auditLogger, logger });
   registerMfaRoutes(app, { authService, mfaService, userManager, auditLogger, logger });
-  registerUserRoutes(app, { userManager, mfaService, auditLogger, logger });
+  registerUserRoutes(app, { userManager, authService, mfaService, auditLogger, logger });
   await app.ready();
 
   const user = await userManager.createUser({

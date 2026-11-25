@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ChefHat } from "lucide-react";
+import { ChefHat, WashingMachine } from "lucide-react";
 import { recipeIcon, RECIPE_ICONS } from "./recipe-icons";
 
 // Spec 198 — every official recipe shows its own icon on the zone page.
@@ -21,6 +21,10 @@ describe("recipeIcon", () => {
   it.each(recipeIcons)("resolves the registry icon of %s (%s)", (_id, icon) => {
     expect(RECIPE_ICONS[icon]).toBeDefined();
     expect(recipeIcon(icon)).toBe(RECIPE_ICONS[icon]);
+  });
+
+  it("knows the washing machine of the appliance-cycle recipe (not yet in the registry)", () => {
+    expect(recipeIcon("WashingMachine")).toBe(WashingMachine);
   });
 
   it("falls back to the chef hat for an unknown or missing name", () => {

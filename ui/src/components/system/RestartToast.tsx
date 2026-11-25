@@ -40,7 +40,7 @@ export function RestartToast({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-sm bg-surface border border-border rounded-md shadow-lg p-4">
+    <div className="fixed bottom-(--tabbar-clearance) lg:bottom-4 right-4 z-50 max-w-sm bg-surface border border-border rounded-md shadow-lg p-4">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-0.5">
           <RefreshCw size={18} className="text-primary" strokeWidth={1.5} />

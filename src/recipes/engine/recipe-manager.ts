@@ -29,11 +29,18 @@ import type {
   TariffConfig,
   TariffSlot,
   OrderSource,
+  RecipeEquipmentDataHelpers,
 } from "../../shared/types.js";
+import {
+  checkPublishDeclaration,
+  type RecipeOutputTarget,
+} from "../../equipments/recipe-outputs.js";
 import { Recipe, type RecipeContext } from "./recipe.js";
 import { toISOUtc } from "../../core/database.js";
 import { RecipeStateStore } from "./recipe-state-store.js";
 import { isAnyLightOn, turnOnLights, turnOffLights, setLightsBrightness } from "./light-helpers.js";
+import { createRecipeHistory } from "./recipe-history.js";
+import type { InfluxClient } from "../../core/influx-client.js";
 import { parseDuration, formatDuration } from "./duration.js";
 
 // ============================================================
@@ -58,6 +65,8 @@ interface RunningInstance {
 
 export class RecipeManager {
   private registry = new Map<string, RegisteredRecipe>();
+  /** Spec 214 — the publishing token of each instance's current start. */
+  private publishTokens = new Map<string, object>();
   private running = new Map<string, RunningInstance>();
   private db: Database.Database;
   private eventBus: EventBus;
@@ -76,6 +85,9 @@ export class RecipeManager {
   /** Spec 140 — capacity arbiter behind `ctx.helpers.energy`. Null in tests
    *  and shadow contexts: the helper then denies `arbiter-disabled`. */
   private capacityArbiter: CapacityArbiter | null;
+  /** Spec 211 — source of `ctx.helpers.history`. Null in most tests: the
+   *  helper is then absent. (In shadow mode no instance starts, spec 124.) */
+  private influxClient: InfluxClient | null;
 
   constructor(
     db: Database.Database,
@@ -88,6 +100,7 @@ export class RecipeManager {
     logger: Logger,
     shadowMode = false,
     capacityArbiter: CapacityArbiter | null = null, // spec 140 — ctx.helpers.energy
+    influxClient: InfluxClient | null = null, // spec 211 — ctx.helpers.history
   ) {
     this.db = db;
     this.eventBus = eventBus;
@@ -100,6 +113,7 @@ export class RecipeManager {
     this.stmts = this.prepareStatements();
     this.shadowMode = shadowMode;
     this.capacityArbiter = capacityArbiter;
+    this.influxClient = influxClient;
   }
 
   private prepareStatements() {
@@ -150,6 +164,15 @@ export class RecipeManager {
    * Wraps the RecipeDefinition factory into the internal RegisteredRecipe format.
    */
   registerExternal(definition: RecipeDefinition, meta: { icon?: string } = {}): void {
+    // Spec 214 — a declaration the core cannot honour keeps the recipe out,
+    // rather than failing on every instance later.
+    if (definition.publishes && definition.publishes.length > 0) {
+      const equipmentSlots = new Set(
+        definition.slots.filter((slot) => slot.type === "equipment").map((slot) => slot.id),
+      );
+      const invalid = checkPublishDeclaration(definition.publishes, equipmentSlots);
+      if (invalid) throw new Error(`Recipe "${definition.id}" ${invalid}`);
+    }
     this.registry.set(definition.id, {
       info: {
         id: definition.id,
@@ -158,6 +181,9 @@ export class RecipeManager {
         slots: definition.slots,
         ...(definition.actions && definition.actions.length > 0
           ? { actions: definition.actions }
+          : {}),
+        ...(definition.publishes && definition.publishes.length > 0
+          ? { publishes: definition.publishes }
           : {}),
         // Spec 169 — carried verbatim, and only when declared: its absence is
         // what tells the Dashboard this recipe is not pinnable.
@@ -330,6 +356,7 @@ export class RecipeManager {
         400,
       );
     }
+    this.assertPublishable(null, registered.info, params);
 
     const id = randomUUID();
     this.stmts.insertInstance.run({
@@ -412,6 +439,7 @@ export class RecipeManager {
         400,
       );
     }
+    this.assertPublishable(instanceId, registered.info, params);
 
     // Stop running instance
     this.stopInstance(instanceId);
@@ -451,6 +479,11 @@ export class RecipeManager {
     const row = this.stmts.getInstanceById.get(instanceId) as InstanceRow | undefined;
     if (!row) throw new RecipeError("Instance not found", 404);
     if (row.enabled === 1) return;
+
+    // Spec 214 — refused before the flag is written, so the caller gets the 400
+    // and the instance does not stay enabled-but-stopped.
+    const enablingInfo = this.registry.get(row.recipe_id)?.info;
+    if (enablingInfo) this.assertPublishable(instanceId, enablingInfo, rowToInstance(row).params);
 
     this.stmts.setInstanceEnabled.run(1, instanceId);
     const instance = rowToInstance({ ...row, enabled: 1 });
@@ -564,15 +597,28 @@ export class RecipeManager {
     // early-return in that case and never release it).
     this.capacityArbiter?.releaseAllFor(instance.id);
 
-    const ctx = this.buildContext(instance.id, instance.recipeId);
+    // Spec 214 — this start's publishing token: a closure left over from a
+    // previous start of the same instance publishes nothing.
+    const publishToken = {};
+    this.publishTokens.set(instance.id, publishToken);
+    const ctx = this.buildContext(instance.id, instance.recipeId, publishToken);
+    const info = this.registry.get(instance.recipeId)?.info;
+    // Spec 214 — refused here too on the enable and boot paths, which have no
+    // request to answer: the caller logs it and the instance stays stopped.
+    const outputs = info ? this.assertPublishable(instance.id, info, instance.params, false) : [];
 
     try {
       recipe.validate(instance.params, ctx);
+      if (outputs.length > 0) {
+        this.equipmentManager.attachRecipeOutputs(instance.id, info?.name ?? "", outputs);
+      }
       recipe.start(instance.params, ctx);
     } catch (err) {
       // A recipe that claimed capacity in start() and then threw must not
       // leak the claim (which would block the equipment until restart).
       this.capacityArbiter?.releaseAllFor(instance.id);
+      // Nor leave data on its equipments (spec 214).
+      if (outputs.length > 0) this.equipmentManager.detachRecipeOutputs(instance.id);
       throw err;
     }
 
@@ -601,6 +647,10 @@ export class RecipeManager {
     } catch (err) {
       this.logger.error({ err, instanceId }, "Error stopping recipe instance");
     }
+    // Spec 214 — a stopped instance publishes nothing any more. Unconditional:
+    // a package update may have dropped the declaration the outputs came from.
+    this.publishTokens.delete(instanceId);
+    this.equipmentManager.detachRecipeOutputs(instanceId);
 
     this.running.delete(instanceId);
     const stoppedRecipeName = this.registry.get(running.instance.recipeId)?.info.name;
@@ -615,9 +665,11 @@ export class RecipeManager {
     });
   }
 
-  // `energy` is per-instance (the claim must be owned, spec 140), so the
-  // shared object carries everything BUT it; buildContext adds it.
-  private readonly helpers: Omit<RecipeHelpers, "energy"> = {
+  // `energy` is per-instance (the claim must be owned, spec 140), as are
+  // `equipmentData` (spec 214) and `history` (spec 211, its rate limit is per
+  // context), so the shared object carries everything BUT them; buildContext
+  // adds them.
+  private readonly helpers: Omit<RecipeHelpers, "energy" | "equipmentData" | "history"> = {
     isAnyLightOn,
     turnOnLights,
     turnOffLights,
@@ -713,7 +765,7 @@ export class RecipeManager {
     };
   }
 
-  private buildContext(instanceId: string, recipeId: string): RecipeContext {
+  private buildContext(instanceId: string, recipeId: string, publishToken?: object): RecipeContext {
     const onChanged = () => {
       this.eventBus.emit({ type: "recipe.instance.state.changed", instanceId, recipeId });
     };
@@ -732,10 +784,109 @@ export class RecipeManager {
         const childLogger = this.logger.child({ instanceId, recipeId, recipeName });
         childLogger[level]({ instanceId, recipeId, recipeName }, message);
       },
-      helpers: { ...this.helpers, energy: this.buildEnergyHelpers(instanceId) },
+      helpers: {
+        ...this.helpers,
+        energy: this.buildEnergyHelpers(instanceId),
+        equipmentData: this.buildEquipmentDataHelpers(instanceId, publishToken),
+        // Spec 211 — a fresh helper per context: its rate-limit counter lives
+        // and dies with it, and a validate() context never drains an instance's.
+        history: this.influxClient
+          ? createRecipeHistory({
+              influxClient: this.influxClient,
+              equipmentManager: this.equipmentManager,
+              logger: this.logger,
+              instanceId,
+              // Bound to this start, like equipmentData: a closure left over
+              // from a stopped or earlier start reads nothing.
+              isCurrent:
+                publishToken === undefined
+                  ? undefined
+                  : () => this.publishTokens.get(instanceId) === publishToken,
+            })
+          : undefined,
+      },
       dispatchOrder: (equipmentId, alias, value) =>
         this.equipmentManager.executeOrder(equipmentId, alias, value, orderSource),
     };
+  }
+
+  /**
+   * Spec 214 — the instance's publishing channel, bound to one start. A
+   * validation context (no token) or a closure from an earlier start of the
+   * same instance publishes nothing.
+   */
+  private buildEquipmentDataHelpers(
+    instanceId: string,
+    publishToken: object | undefined,
+  ): RecipeEquipmentDataHelpers {
+    return {
+      publish: (equipmentId, alias, value) =>
+        publishToken === undefined || this.publishTokens.get(instanceId) !== publishToken
+          ? { ok: false, reason: "not running" }
+          : this.equipmentManager.publishRecipeData(instanceId, equipmentId, alias, value),
+    };
+  }
+
+  /** Spec 214 — declarations × the equipment ids their slot holds in `params`. */
+  private resolvePublishTargets(
+    info: RecipeInfo,
+    params: Record<string, unknown>,
+  ): RecipeOutputTarget[] {
+    const targets: RecipeOutputTarget[] = [];
+    for (const def of info.publishes ?? []) {
+      const value = params[def.slot];
+      const ids = Array.isArray(value) ? value : [value];
+      for (const id of ids) {
+        if (typeof id === "string" && id !== "") targets.push({ equipmentId: id, def });
+      }
+    }
+    return targets;
+  }
+
+  /**
+   * Spec 214 FR2 — the outputs an instance may take, or a 400 RecipeError
+   * naming the conflict: devices, the core's own derived aliases, running
+   * instances, and — on a user's request (create, update, enable) — every
+   * other ENABLED instance in the database, running or not. A start (boot,
+   * restart) checks only what runs: two enabled instances left in conflict
+   * (a package update that added a declaration) keep the first one started,
+   * rather than refusing both.
+   */
+  private assertPublishable(
+    instanceId: string | null,
+    info: RecipeInfo,
+    params: Record<string, unknown>,
+    againstEnabled = true,
+  ): RecipeOutputTarget[] {
+    const targets = this.resolvePublishTargets(info, params);
+    if (targets.length === 0) return [];
+    if (againstEnabled) this.assertNoEnabledConflict(instanceId, targets);
+    try {
+      return this.equipmentManager.checkPublishable(instanceId ?? "", targets);
+    } catch (err) {
+      throw new RecipeError(err instanceof Error ? err.message : String(err), 400);
+    }
+  }
+
+  private assertNoEnabledConflict(
+    instanceId: string | null,
+    targets: readonly RecipeOutputTarget[],
+  ): void {
+    const wanted = new Set(targets.map((t) => `${t.equipmentId}\u0000${t.def.alias}`));
+    for (const row of this.stmts.getAllInstances.all() as InstanceRow[]) {
+      if (row.id === instanceId || row.enabled !== 1) continue;
+      const other = this.registry.get(row.recipe_id)?.info;
+      if (!other?.publishes) continue;
+      for (const t of this.resolvePublishTargets(other, rowToInstance(row).params)) {
+        if (wanted.has(`${t.equipmentId}\u0000${t.def.alias}`)) {
+          const name = this.equipmentManager.getById(t.equipmentId)?.name ?? t.equipmentId;
+          throw new RecipeError(
+            `"${name}" already gets "${t.def.alias}" from recipe instance ${row.id} (${other.name})`,
+            400,
+          );
+        }
+      }
+    }
   }
 
   private writeLog(

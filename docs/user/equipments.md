@@ -87,16 +87,23 @@ Awnings share the shutter control surface (same position binding, same OPEN/STOP
 | Type             | Controls                                                | Expected data                                                                                                          |
 | ---------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **Thermostat**   | Temperature display, setpoint − / +, power on/off, mode | core: current temperature, setpoint, run state, power, operating mode; then whatever else the device offers, as extras |
-| **Heater**       | Comfort / Eco toggle                                    | relay state (fil pilote: ON = eco, OFF = comfort)                                                                      |
+| **Heater**       | Comfort / Eco toggle, or one button per pilot-wire mode | relay state (ON = eco, OFF = comfort), or pilot-wire mode with optional power/energy                                   |
 | **Water Heater** | On/Off toggle, optional dedicated Solar toggle          | on/off relay state, optional solar-channel state, optional water temperature (display only), optional power/energy     |
 
-Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters wired through a fil-pilote relay. Water Heater (chauffe-eau / cumulus) is an on/off relay for a hot-water tank: auto-binds the on/off channel (and its power/energy when the relay meters them); a water-temperature probe can be bound optionally and is shown but kept out of the room temperature average. Setpoint control is intentionally out of scope (that would be a thermostat).
+Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters on a pilot wire (fil pilote), driven by a relay or by a pilot-wire module. Water Heater (chauffe-eau / cumulus) is an on/off relay for a hot-water tank: auto-binds the on/off channel (and its power/energy when the relay meters them); a water-temperature probe can be bound optionally and is shown but kept out of the room temperature average. Setpoint control is intentionally out of scope (that would be a thermostat).
 
 A thermostat has a **core** and **extras**. The core is the small set every thermostat shares and every Sowel surface relies on: `temperature`, `setpoint`, `state`, `power`, `operationMode`, plus `outsideTemperature` when the unit carries an outdoor probe. Sowel recognises a device as a thermostat when it can be given a setpoint, whatever the plugin calls the key. Everything else the device offers (a fan speed, an ioniser, a pellet stove's programme and alarm reset, a vendor setting Sowel has never met) is bound too, but as an **extra**: the card leads with the core and lists the extras in a secondary section, one control per bound command (buttons for a choice, a toggle for an on/off, an action button for a one-shot, a stepper for a number) and one chip per reading. Extras vary from one thermostat to the next and never define the type. The operating mode uses a common vocabulary: `auto`, `heat`, `cool`, `dry`, `fan`, and `off` on units whose mode carries the stop.
 
 On a thermostat, the on/off state reported by the device itself is bound under the `state` alias, the same on/off alias relay-style equipments use. This matters on a **submetered** thermostat (a heat pump measured by a clamp): there the `power` alias carries the live wattage, and the wattage cannot tell the UI whether the unit is on or in standby. If your thermostat card never shows as on, open the equipment's missing-bindings panel and add the device's power reading: it is offered as `state`. Legacy thermostats with the boolean bound directly under `power` keep working unchanged.
 
 The setpoint has the same − / + buttons on the equipment page, in the Home rows, on the dashboard and in its phone panel, and so do a thermostat's numeric extras, an EV charger's current and a car's charge limit. The value follows each tap at once and one order leaves after the last one: about 0.6 s later for a cloud device, 0.15 s for a local one. See [Dashboard](dashboard.md#equipment-widget).
+
+**Heater: relay or pilot-wire module.** It is one equipment type; what the device offers decides the controls.
+
+- A **relay** on the pilot wire gives Comfort / Eco (relay ON = eco, OFF = comfort).
+- A **pilot-wire module** (NodOn SIN-4-FP-21 and similar, through Zigbee2MQTT) gives the modes it accepts among Comfort, Comfort -1 °C, Comfort -2 °C, Eco, Frost protection and Off. Sowel binds the mode and the power / energy readings, and leaves the module's on/off `state` out: on these modules it does not mean comfort or eco. A heater created before Sowel knew these modes shows its mode without buttons: open its missing-bindings panel and add what it offers, then remove the old `state` binding, or a recipe could still command it.
+- The setpoint stays on the radiator: a mode lowers the target, it does not set one. Some radiators only follow the pilot wire once put in external programming, and older ones may ignore Comfort -1 and -2. Sowel shows the order the module sends.
+- The Presence Heater recipe drives relays only; it refuses a heater that has no on/off `state`.
 
 A water heater (and a switch) can also carry a dedicated **solar** on/off channel, independent from the main on/off: a second contact (e.g. a SONOFF MINI-ZBD Zigbee dry-contact relay driving the photovoltaic input of a heat-pump water heater). It is bound explicitly under the solar role, distinct from the appliance's normal operation. On a water heater left on permanent mains, only the Solar toggle appears; the card shows one toggle per bound channel. The solar channel is the actuator a solar-surplus recipe drives through the energy arbiter; the arbitration logic itself stays in the recipe.
 
@@ -193,8 +200,10 @@ Sessions start when this feature is installed: earlier months are not rebuilt. E
 | ------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | **Appliance** | Read-only status display | power state, operating state (ready/running/paused), current phase, progress (%), remaining time, energy used |
 
+**Run state from a metering plug.** An appliance that reports no state of its own (a washing machine behind a metering plug) can get one from a recipe that reads its power and publishes the state on the equipment, for instance `off` / `ready` / `running` / `finished`. The card, the panel and the history then show it like a state from the machine. With a plug, the card shows the machine on from 1 W, even without a state.
+
 !!! tip "End-of-cycle notification"
-Use a `state-watch` recipe to get notified when the operating state changes from `running` to `ready`.
+Use a `state-watch` recipe on the operating state: `ready` for a SmartThings washer, `finished` for a state a recipe derives from power.
 
 ### Water
 

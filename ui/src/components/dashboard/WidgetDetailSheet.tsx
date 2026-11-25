@@ -27,6 +27,10 @@ import { executeZoneOrder } from "../../api";
 import { equipmentLinkState } from "../../lib/equipment-origin";
 import { useEquipmentState } from "../equipments/useEquipmentState";
 import { findOrderByCategory } from "../equipments/bindingUtils";
+import { PilotWireModes } from "../equipments/HeaterControl";
+import { heaterModeKey, heaterModeTint } from "../equipments/heaterMode";
+import { isRunning } from "../equipments/equipment-running";
+import { isHeaterRunning, resolveHeaterState } from "../../lib/heater-contract";
 import { VmcControl } from "../equipments/VmcControl";
 import { EvChargerControl } from "../equipments/EvChargerControl";
 import { ElectricVehicleControl } from "../equipments/ElectricVehicleControl";
@@ -127,9 +131,15 @@ export function EquipmentDetailSheet({
         customEntry.component,
         customIconProps(customEntry, {
           // "Is this thing doing something" — each family reads it from the
-          // state the hook already resolved. A heater is fil pilote: its relay
-          // OPEN is comfort, which is the state its drawing calls warm.
-          on: isHeater ? !isOn : isGate ? gateIsOpen : isShutterFamily ? shutterIsOpen : isOn,
+          // state the hook already resolved. A heater is warm in its comfort modes,
+          // whichever its wiring (spec 217).
+          on: isHeater
+            ? isRunning(equipment)
+            : isGate
+              ? gateIsOpen
+              : isShutterFamily
+                ? shutterIsOpen
+                : isOn,
           position: shutterPosition ?? undefined,
           level: shutterPosition !== null ? shutterLevel(shutterPosition) : undefined,
         }),
@@ -973,6 +983,7 @@ function ZoneHeatingDetail({
       if (tempBinding && typeof tempBinding.value === "number") temps.push(tempBinding.value);
       const spBinding = eq.dataBindings.find((b) => b.alias === "setpoint");
       if (spBinding && typeof spBinding.value === "number") setpoints.push(spBinding.value);
+      if (eq.type === "heater") continue;
       const power = thermostatPowerStateBinding(eq.dataBindings);
       if (power?.value === true) on = true;
     }
@@ -980,6 +991,10 @@ function ZoneHeatingDetail({
       arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [equipments]);
+
+  // Spec 217 — a heater is warm in its comfort modes. Kept apart from `anyOn`,
+  // which drives the thermostats' on/off button.
+  const warm = anyOn || equipments.some((eq) => eq.type === "heater" && isRunning(eq));
 
   const displaySetpoint = shownSetpoint ?? avgSetpoint;
   const thermometerLevel = setpointLevel(displaySetpoint, bounds.min, bounds.max);
@@ -989,7 +1004,7 @@ function ZoneHeatingDetail({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-center gap-6">
-        <ThermometerIcon warm={anyOn} level={thermometerLevel} />
+        <ThermometerIcon warm={warm} level={thermometerLevel} />
         <div className="flex flex-col items-center">
           {avgTemp !== null ? (
             <span className="text-value font-semibold text-text tabular-nums leading-none">
@@ -1496,13 +1511,8 @@ function HeaterDetailContent({
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
 
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" || db.category === "light_state",
-  );
-  const isOn = stateBinding
-    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
-    : false;
-  const isComfort = !isOn;
+  const state = resolveHeaterState(equipment.dataBindings, equipment.orderBindings);
+  const isComfort = isHeaterRunning(state);
 
   // Category-first resolver (spec 110). Heater toggle is `toggle_power` /
   // `light_toggle` depending on the underlying device. We keep the
@@ -1524,7 +1534,7 @@ function HeaterDetailContent({
     try {
       const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
       const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value = isOn ? offVal : onVal;
+      const value = state.mode === "eco" ? offVal : onVal;
       await onExecuteOrder(toggleBinding.alias, value);
     } finally {
       setExecuting(false);
@@ -1540,17 +1550,15 @@ function HeaterDetailContent({
 
       {/* Mode display */}
       <div className="flex justify-center">
-        <span
-          className={`text-body font-medium px-4 py-2 rounded-full ${
-            isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"
-          }`}
-        >
-          {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
+        <span className={`text-body font-medium px-4 py-2 rounded-full ${heaterModeTint(state)}`}>
+          {t(heaterModeKey(state.mode))}
         </span>
       </div>
 
+      <PilotWireModes equipment={equipment} onExecuteOrder={onExecuteOrder} />
+
       {/* Toggle button */}
-      {toggleBinding && equipment.enabled && (
+      {state.wiring === "relay" && toggleBinding && equipment.enabled && (
         <button
           onClick={handleToggle}
           disabled={executing}

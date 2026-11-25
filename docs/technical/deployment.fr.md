@@ -91,6 +91,22 @@ docker compose pull && docker compose up -d sowel
 
 Ce défaut a été inversé en v1.15.3 (par rapport à la décision v1.7.0 / spec 105) après retour terrain : la quasi-totalité des installs tombait sur le message "update unavailable" sans deviner qu'il fallait copier un fichier override.
 
+### Derrière un reverse proxy ou un tunnel
+
+Quand Sowel est joint à travers un reverse proxy ou un connecteur de tunnel (Cloudflare Tunnel, Caddy, nginx), chaque requête arrive depuis l'adresse locale du proxy. Sowel ne voit alors qu'un seul client : les limites par adresse sur les tentatives de connexion et de MFA sont partagées par tout le monde, si bien qu'un inconnu qui martèle la page de connexion vous bloque aussi, et le journal d'audit enregistre l'adresse du proxy au lieu de celle du client.
+
+Renseignez `SOWEL_TRUSTED_PROXIES` avec l'adresse depuis laquelle le proxy se connecte, et Sowel prend l'adresse du client dans l'en-tête `X-Forwarded-For` ajouté par ce proxy :
+
+```yaml
+environment:
+  - SOWEL_TRUSTED_PROXIES=172.18.0.1
+```
+
+- La valeur est une liste d'IP ou de plages CIDR séparées par des virgules. Vide (par défaut), personne n'est cru.
+- Pour trouver la bonne adresse, regardez l'IP des entrées `auth.login.success` récentes du journal d'audit pour des connexions passées par le proxy. Avec `cloudflared` sur l'hôte Docker et pointé vers `localhost:3000`, c'est la passerelle du bridge Docker, en général `172.18.0.1` ou `172.17.0.1`.
+- Ne listez que le proxy. `X-Forwarded-For` n'est cru que si la connexion vient d'une adresse listée, donc un appareil qui joint Sowel directement depuis sa propre adresse ne peut pas en choisir une autre. Lister toute une plage du LAN rendrait ce choix à chacun de ses appareils.
+- Faire confiance à la passerelle Docker revient à faire confiance à tout ce que Docker relaie par elle, pas seulement au tunnel : les autres processus de l'hôte qui se connectent à `localhost:3000` et, avec le proxy userland par défaut de Docker, les clients qui joignent le port publié en IPv6. Pour en exclure les appareils du LAN, publiez le port en IPv4 uniquement (`"0.0.0.0:3000:3000"`). Le montage le plus strict fait tourner le connecteur du tunnel comme conteneur sur le réseau de Sowel, avec une adresse fixe, et ne liste que cette adresse.
+
 ---
 
 ## Exploitation

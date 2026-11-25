@@ -4,7 +4,7 @@ Sowel expose une API REST sous `/api/v1/` et un endpoint WebSocket à `/ws`. Tou
 
 **Base URL** : `http://<host>:3000`
 
-**Authentification** : passez un token d'accès JWT en header `Authorization: Bearer <token>`, ou un token d'API en `Authorization: Bearer swl_<token>`.
+**Authentification** : passez un token d'accès JWT en header `Authorization: Bearer <token>`, ou un token d'API en `Authorization: Bearer swl_<token>`. Les deux sont vérifiés contre le compte à chaque requête HTTP : un compte désactivé ou supprimé est refusé, et le rôle appliqué est celui enregistré actuellement. Un WebSocket est vérifié une seule fois, à la connexion.
 
 ---
 
@@ -99,15 +99,15 @@ physique lié à un mode, qui ne portent aucun rôle.
 
 Profil et tokens de l'utilisateur authentifié.
 
-| Method   | Path                     | Description                                                                                          |
-| -------- | ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/me`             | Récupère le profil de l'utilisateur courant.                                                         |
-| `PUT`    | `/api/v1/me`             | Met à jour le nom d'affichage. Body : `{ displayName }`.                                             |
-| `PUT`    | `/api/v1/me/preferences` | Met à jour les préférences (langue, thème, etc.). Body : `{ preferences }`.                          |
-| `PUT`    | `/api/v1/me/password`    | Change le mot de passe. Body : `{ currentPassword, newPassword }`.                                   |
-| `GET`    | `/api/v1/me/tokens`      | Liste les tokens d'API personnels.                                                                   |
-| `POST`   | `/api/v1/me/tokens`      | Crée un token d'API. Body : `{ name, expiresAt? }`. Retourne la chaîne de token (affichée une fois). |
-| `DELETE` | `/api/v1/me/tokens/:id`  | Révoque un token d'API. Retourne 204.                                                                |
+| Method   | Path                     | Description                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/me`             | Récupère le profil de l'utilisateur courant.                                                                                                                                                                                                                                                                                                                                                                                        |
+| `PUT`    | `/api/v1/me`             | Met à jour le nom d'affichage. Body : `{ displayName }`.                                                                                                                                                                                                                                                                                                                                                                            |
+| `PUT`    | `/api/v1/me/preferences` | Met à jour les préférences (langue, thème, etc.). Body : `{ preferences }`.                                                                                                                                                                                                                                                                                                                                                         |
+| `PUT`    | `/api/v1/me/password`    | Change le mot de passe. Body : `{ currentPassword, newPassword }`. Ferme aussitôt toutes les sessions du compte (refresh tokens supprimés, tokens d'accès émis avant le changement refusés) et, appelé avec une session (JWT), retourne un nouveau `{ accessToken, refreshToken, expiresIn, user }` que le client doit adopter. Appelé avec un token d'API, il ne retourne que `{ success: true }`, et le token d'API reste valide. |
+| `GET`    | `/api/v1/me/tokens`      | Liste les tokens d'API personnels.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `POST`   | `/api/v1/me/tokens`      | Crée un token d'API. Body : `{ name, expiresAt? }`. Retourne la chaîne de token (affichée une fois).                                                                                                                                                                                                                                                                                                                                |
+| `DELETE` | `/api/v1/me/tokens/:id`  | Révoque un token d'API. Retourne 204.                                                                                                                                                                                                                                                                                                                                                                                               |
 
 ---
 
@@ -115,12 +115,13 @@ Profil et tokens de l'utilisateur authentifié.
 
 Toutes les routes de gestion des utilisateurs nécessitent le rôle admin.
 
-| Method   | Path                | Description                                                                                         |
-| -------- | ------------------- | --------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/users`     | Liste tous les utilisateurs.                                                                        |
-| `POST`   | `/api/v1/users`     | Crée un utilisateur. Body : `{ username, password, displayName, role }`.                            |
-| `PUT`    | `/api/v1/users/:id` | Met à jour un utilisateur. Body : `{ displayName?, role?, enabled? }`.                              |
-| `DELETE` | `/api/v1/users/:id` | Supprime un utilisateur. Impossible de se supprimer ou de supprimer le dernier admin. Retourne 204. |
+| Method   | Path                    | Description                                                                                                                                                                                                                                                                                                 |
+| -------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/users`         | Liste tous les utilisateurs.                                                                                                                                                                                                                                                                                |
+| `POST`   | `/api/v1/users`         | Crée un utilisateur. Body : `{ username, password, displayName, role }`.                                                                                                                                                                                                                                    |
+| `PUT`    | `/api/v1/users/:id`     | Met à jour un utilisateur. Body : `{ displayName?, role?, enabled? }`. Un changement de rôle ou une désactivation ferme toutes les sessions de l'utilisateur.                                                                                                                                               |
+| `DELETE` | `/api/v1/users/:id`     | Supprime un utilisateur. Impossible de se supprimer ou de supprimer le dernier admin. Retourne 204.                                                                                                                                                                                                         |
+| `DELETE` | `/api/v1/users/:id/mfa` | Désactive de force la MFA d'un autre utilisateur (spec 151 FR6), chemin de récupération quand il a perdu son appareil TOTP et ses codes de secours. Aucune vérification demandée à l'admin. Ferme aussi toutes les sessions de l'utilisateur, l'appareil perdu pouvant encore en détenir une. Retourne 204. |
 
 ---
 
@@ -140,14 +141,14 @@ Toutes les routes de gestion des utilisateurs nécessitent le rôle admin.
 
 ## Equipments
 
-| Method   | Path                                   | Description                                                                                                                                                                                                      |
-| -------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/equipments`                   | Liste tous les équipements avec leurs liaisons et données courantes. Paramètre optionnel `?type=<EquipmentType>` pour filtrer sur un seul type (ex. `energy_meter`). Une valeur inconnue renvoie une liste vide. |
-| `GET`    | `/api/v1/equipments/:id`               | Récupère un équipement avec liaisons et données courantes.                                                                                                                                                       |
-| `POST`   | `/api/v1/equipments`                   | Crée un équipement. Body : `{ name, type, zoneId, icon?, description?, deviceIds? }`. Si `deviceIds` est fourni, des liaisons automatiques sont créées.                                                          |
-| `PUT`    | `/api/v1/equipments/:id`               | Met à jour un équipement. Body : `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                                                                                     |
-| `DELETE` | `/api/v1/equipments/:id`               | Supprime un équipement. Retourne 204.                                                                                                                                                                            |
-| `POST`   | `/api/v1/equipments/:id/orders/:alias` | Exécute un ordre d'équipement. Body : `{ value }`.                                                                                                                                                               |
+| Method   | Path                                   | Description                                                                                                                                                                                                                                                                                                                                         |
+| -------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/equipments`                   | Liste tous les équipements avec leurs liaisons et données courantes. Paramètre optionnel `?type=<EquipmentType>` pour filtrer sur un seul type (ex. `energy_meter`). Une valeur inconnue renvoie une liste vide.                                                                                                                                    |
+| `GET`    | `/api/v1/equipments/:id`               | Récupère un équipement avec liaisons et données courantes.                                                                                                                                                                                                                                                                                          |
+| `POST`   | `/api/v1/equipments`                   | Crée un équipement. Body : `{ name, type, zoneId, icon?, description?, deviceIds? }`. Si `deviceIds` est fourni, des liaisons automatiques sont créées.                                                                                                                                                                                             |
+| `PUT`    | `/api/v1/equipments/:id`               | Met à jour un équipement. Body : `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                                                                                                                                                                                                                        |
+| `DELETE` | `/api/v1/equipments/:id`               | Supprime un équipement. Retourne 204.                                                                                                                                                                                                                                                                                                               |
+| `POST`   | `/api/v1/equipments/:id/orders/:alias` | Exécute un ordre d'équipement. Body : `{ value }`. Sauf pour un ordre typé `json`, `value` est une chaîne, un nombre, un booléen ou vide, ou, sur un ordre on/off (booléen ou enum), le composite minuté `{ <clé de l'ordre>: <valeur>, on_time?, off_wait_time? }` (en secondes) ; toute autre forme répond 400 et rien n'est envoyé à l'appareil. |
 
 ### Actions minutées (spec 174)
 
@@ -180,6 +181,7 @@ Les règles à connaître avant d'appeler :
 - **Un retour qui n'a pas pu partir lève une alerte et s'arrête.** Il n'est jamais rejoué : le moteur ne peut pas savoir si un second envoi remettrait l'équipement en place ou agirait une deuxième fois.
 - `durationMs` est compris entre 10 s et 24 h. Une action et son retour **peuvent porter la même valeur** : un portail coulissant à impulsion séquentielle s'ouvre et se ferme avec la même commande.
 - **Tous les équipements ne peuvent pas être armés.** Il faut l'ordre demandé et une mesure d'état qui lui est liée (l'alias de l'ordre lui-même, ou une mesure en `light_state`, `gate_state`, `cover_state`, `lock_state`, `appliance_state`). Sans elle, un retour fait à la main ne pourrait jamais terminer le créneau : l'appel est refusé avec `400 TimedCommandNotEligible`.
+- **`value` et `revertValue` suivent la règle des valeurs d'ordre** de `POST /equipments/:id/orders/:alias`, et les deux sont vérifiées à l'armement : un retour que l'ordre refuserait répond 400 à ce moment-là, plutôt que d'échouer à l'échéance.
 - **Un corps vide arme la configuration de l'équipement** (`timedCommand`), pour qu'une surface n'ait pas à redire trois valeurs qui ne lui appartiennent pas : `POST /equipments/:id/timed-action` avec `{}`. `409` si rien n'est configuré.
 - `GET /equipments` et `GET /equipments/:id` portent `timedAction` pendant le créneau, avec `expiresAt` en ISO-8601, et `timedCommand` quand une commande est configurée.
 
@@ -234,16 +236,16 @@ Le verdict vient de `classifyPowerReading` dans `src/shared/reading-freshness.ts
 
 ## Zones
 
-| Method   | Path                                 | Description                                                                                        |
-| -------- | ------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/zones`                      | Liste toutes les zones en arborescence.                                                            |
-| `GET`    | `/api/v1/zones/:id`                  | Récupère une zone avec ses enfants.                                                                |
-| `POST`   | `/api/v1/zones`                      | Crée une zone. Body : `{ name, parentId?, icon?, description?, displayOrder? }`.                   |
-| `PUT`    | `/api/v1/zones/:id`                  | Met à jour une zone. Body : `{ name?, parentId?, icon?, description?, displayOrder? }`.            |
-| `DELETE` | `/api/v1/zones/:id`                  | Supprime une zone. Retourne 204.                                                                   |
-| `PUT`    | `/api/v1/zones/reorder`              | Réordonne des zones de même niveau. Body : `{ parentId, orderedIds }`. Retourne 204.               |
-| `GET`    | `/api/v1/zones/aggregation`          | Récupère les données agrégées de toutes les zones (température, mouvement, lightsOn, etc.).        |
-| `POST`   | `/api/v1/zones/:id/orders/:orderKey` | Exécute un ordre au niveau zone (par ex. `allLightsOff`, `allShuttersClose`). Body : `{ value? }`. |
+| Method   | Path                                 | Description                                                                                                                                                                                                                                               |
+| -------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/zones`                      | Liste toutes les zones en arborescence.                                                                                                                                                                                                                   |
+| `GET`    | `/api/v1/zones/:id`                  | Récupère une zone avec ses enfants.                                                                                                                                                                                                                       |
+| `POST`   | `/api/v1/zones`                      | Crée une zone. Body : `{ name, parentId?, icon?, description?, displayOrder? }`.                                                                                                                                                                          |
+| `PUT`    | `/api/v1/zones/:id`                  | Met à jour une zone. Body : `{ name?, parentId?, icon?, description?, displayOrder? }`.                                                                                                                                                                   |
+| `DELETE` | `/api/v1/zones/:id`                  | Supprime une zone. Retourne 204.                                                                                                                                                                                                                          |
+| `PUT`    | `/api/v1/zones/reorder`              | Réordonne des zones de même niveau. Body : `{ parentId, orderedIds }`. Retourne 204.                                                                                                                                                                      |
+| `GET`    | `/api/v1/zones/aggregation`          | Récupère les données agrégées de toutes les zones (température, mouvement, lightsOn, etc.).                                                                                                                                                               |
+| `POST`   | `/api/v1/zones/:id/orders/:orderKey` | Exécute un ordre au niveau zone (par ex. `allLightsOff`, `allShuttersClose`). Body : `{ value? }`, qui suit la règle des valeurs d'ordre de `POST /equipments/:id/orders/:alias` ; une valeur refusée compte comme une erreur pour l'équipement concerné. |
 
 ---
 
@@ -397,16 +399,16 @@ Mises à jour en direct sur le topic WebSocket `energy` : `energy.ev_session.upd
 
 ## History
 
-| Method | Path                                               | Description                                                                                                                    |
-| ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `GET`  | `/api/v1/history/status`                           | Statut du module historique (connexion, nombre de bindings historisés, stats).                                                 |
-| `GET`  | `/api/v1/history/retention`                        | Statut de rétention et de downsampling pour tous les buckets/tâches InfluxDB.                                                  |
-| `GET`  | `/api/v1/history/bindings/:equipmentId`            | Liste les réglages d'historisation des data bindings d'un équipement.                                                          |
-| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Définit le flag d'historisation. Body : `{ historize }` (null, 0 ou 1).                                                        |
-| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Données de sparkline 24 h au niveau zone (par ex. tendance de température).                                                    |
-| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Données de sparkline 24 h au niveau équipement.                                                                                |
-| `GET`  | `/api/v1/history/:equipmentId`                     | Liste les alias historisés pour un équipement.                                                                                 |
-| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Interroge les données de série temporelle. Query : `?from=-24h&to=&aggregation=auto`. Agrégations : `raw`, `1h`, `1d`, `auto`. |
+| Method | Path                                               | Description                                                                                                                                                                                            |
+| ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/v1/history/status`                           | Statut du module historique (connexion, nombre de bindings historisés, stats).                                                                                                                         |
+| `GET`  | `/api/v1/history/retention`                        | Statut de rétention et de downsampling pour tous les buckets/tâches InfluxDB.                                                                                                                          |
+| `GET`  | `/api/v1/history/bindings/:equipmentId`            | Liste les réglages d'historisation des data bindings d'un équipement, avec `enumValues` sur un enum. Une donnée publiée par une recette (spec 214) y figure avec `virtual: true`, toujours historisée. |
+| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Définit le flag d'historisation. Body : `{ historize }` (null, 0 ou 1).                                                                                                                                |
+| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Données de sparkline 24 h au niveau zone (par ex. tendance de température).                                                                                                                            |
+| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Données de sparkline 24 h au niveau équipement.                                                                                                                                                        |
+| `GET`  | `/api/v1/history/:equipmentId`                     | Liste les alias historisés pour un équipement.                                                                                                                                                         |
+| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Interroge les données de série temporelle. Query : `?from=-24h&to=&aggregation=auto`. Agrégations : `raw`, `1h`, `1d`, `auto`.                                                                         |
 
 ---
 
@@ -414,13 +416,13 @@ Mises à jour en direct sur le topic WebSocket `energy` : `energy.ev_session.upd
 
 Routes admin uniquement pour gérer les plugins d'intégration de devices.
 
-| Method | Path                               | Description                                                               |
-| ------ | ---------------------------------- | ------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/integrations`             | Liste toutes les intégrations avec statut, réglages et nombre de devices. |
-| `POST` | `/api/v1/integrations/:id/start`   | Démarre une intégration.                                                  |
-| `POST` | `/api/v1/integrations/:id/stop`    | Arrête une intégration.                                                   |
-| `POST` | `/api/v1/integrations/:id/restart` | Redémarre une intégration (stop + start).                                 |
-| `POST` | `/api/v1/integrations/:id/refresh` | Force un refresh des données (intégrations en polling uniquement).        |
+| Method | Path                               | Description                                                                                                                                                                 |
+| ------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/integrations`             | Liste toutes les intégrations avec statut, réglages et nombre de devices. `statusDetail`, s'il est présent, est la raison donnée par le plugin quand il n'est pas connecté. |
+| `POST` | `/api/v1/integrations/:id/start`   | Démarre une intégration.                                                                                                                                                    |
+| `POST` | `/api/v1/integrations/:id/stop`    | Arrête une intégration.                                                                                                                                                     |
+| `POST` | `/api/v1/integrations/:id/restart` | Redémarre une intégration (stop + start).                                                                                                                                   |
+| `POST` | `/api/v1/integrations/:id/refresh` | Force un refresh des données (intégrations en polling uniquement).                                                                                                          |
 
 ---
 

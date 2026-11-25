@@ -745,3 +745,81 @@ describe("rain-hourly bucket (spec 186)", () => {
     expect(res.points).toEqual([{ time: "2026-09-01T22:00:00Z", value: 2.1 }]);
   });
 });
+
+describe("queryHistory — spec 211 (onError, rawOnly)", () => {
+  const from = "2026-11-16T00:00:00Z";
+  const to = "2026-11-17T00:00:00Z";
+
+  it("spec 211 FR2.8 — onError is called when a query fails, even with partial points", async () => {
+    let errors = 0;
+    const influx = makeInflux({
+      rows: [
+        { _time: "2026-11-16T10:00:00Z", mean: 19 },
+        { _time: "2026-11-16T11:00:00Z", mean: 20 },
+      ],
+      failAfterFirstRowWhen: () => true,
+    });
+    const result = await queryHistory(
+      influx,
+      {
+        equipmentId: "eq-1",
+        alias: "temperature",
+        from,
+        to,
+        aggregation: "1h",
+        onError: () => errors++,
+      },
+      logger,
+    );
+    expect(result.points).toHaveLength(1); // partial
+    expect(errors).toBe(1);
+  });
+
+  it("spec 211 FR2.8 — without onError (REST route) a failure is still swallowed", async () => {
+    const result = await queryHistory(
+      makeInflux({ throwOnQuery: true }),
+      { equipmentId: "eq-1", alias: "temperature", from, to, aggregation: "1h" },
+      logger,
+    );
+    expect(result.points).toEqual([]);
+  });
+
+  it("spec 211 FR2.8 — a successful query never calls onError", async () => {
+    let errors = 0;
+    await queryHistory(
+      makeInflux({ rows: [{ _time: "2026-11-16T10:00:00Z", mean: 19 }] }),
+      {
+        equipmentId: "eq-1",
+        alias: "temperature",
+        from,
+        to,
+        aggregation: "1h",
+        onError: () => errors++,
+      },
+      logger,
+    );
+    expect(errors).toBe(0);
+  });
+
+  it("spec 211 FR2.5 — rawOnly aggregates the raw bucket and never reads a downsampled one", async () => {
+    for (const category of [undefined, "energy", "rain"]) {
+      const capture: string[] = [];
+      await queryHistory(
+        makeInflux({ capture, rows: [{ _time: "2026-11-16T10:00:00Z", _value: 1, mean: 1 }] }),
+        {
+          equipmentId: "eq-1",
+          alias: "a",
+          from,
+          to,
+          aggregation: "1h",
+          category,
+          rawOnly: true,
+        },
+        logger,
+      );
+      expect(capture).toHaveLength(1);
+      expect(capture[0]).toContain('from(bucket: "sowel")');
+      expect(capture[0]).toContain("aggregateWindow(every: 1h");
+    }
+  });
+});

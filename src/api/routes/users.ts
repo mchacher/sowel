@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { AuthService } from "../../auth/auth-service.js";
 import type { UserManager } from "../../auth/user-manager.js";
 import type { MfaService } from "../../auth/mfa-service.js";
 import type { Logger } from "../../core/logger.js";
@@ -41,13 +42,14 @@ const updateUserBodySchema = {
 
 interface UsersDeps {
   userManager: UserManager;
+  authService: AuthService;
   mfaService: MfaService;
   auditLogger: AuditLogger;
   logger: Logger;
 }
 
 export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void {
-  const { userManager, mfaService, auditLogger } = deps;
+  const { userManager, authService, mfaService, auditLogger } = deps;
 
   // All user management routes require admin role
   app.addHook("onRequest", async (request, reply) => {
@@ -131,6 +133,14 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
         enabled: enabled ?? existing.enabled,
       });
 
+      // Issue #1305 — what a session may do was decided at login. A disabled
+      // account, or one whose role moved either way, starts again from a
+      // fresh login.
+      const roleChanged = role !== undefined && role !== existing.role;
+      const enabledChanged = enabled !== undefined && enabled !== existing.enabled;
+      const sessionsRevoked =
+        roleChanged || enabledChanged ? authService.revokeUserSessions(request.params.id) : 0;
+
       auditLogger.log({
         ...buildActor(request, userManager),
         action: "user.update",
@@ -146,6 +156,7 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
               ? { from: existing.enabled, to: enabled }
               : undefined,
           displayNameChanged: displayName !== undefined && displayName !== existing.displayName,
+          sessionsRevoked,
         },
       });
 
@@ -197,13 +208,16 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
     if (!existing) return reply.code(404).send({ error: "User not found" });
 
     mfaService.disable(request.params.id);
+    // Issue #1305 — this is the lost-device path, and a lost phone may still
+    // hold a live session. The user logs in again with their password.
+    const sessionsRevoked = authService.revokeUserSessions(request.params.id);
     auditLogger.log({
       ...buildActor(request, userManager),
       action: "mfa.disabled.by_admin",
       targetType: "user",
       targetId: request.params.id,
       ip: request.ip,
-      meta: { username: existing.username },
+      meta: { username: existing.username, sessionsRevoked },
     });
     return reply.code(204).send();
   });

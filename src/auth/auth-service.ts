@@ -25,6 +25,8 @@ export interface JwtPayload {
   userId: string;
   role: UserRole;
   purpose?: TokenPurpose;
+  /** Issue #1305 — `users.token_version` at issue time. Absent = 0. */
+  tv?: number;
 }
 
 interface MfaPendingPayload {
@@ -83,6 +85,8 @@ export class AuthService {
       ),
       deleteRefresh: db.prepare("DELETE FROM refresh_tokens WHERE token_hash = ?"),
       deleteUserRefreshTokens: db.prepare("DELETE FROM refresh_tokens WHERE user_id = ?"),
+      // Issue #1305 — what an access token may do right now.
+      getSessionState: db.prepare("SELECT role, enabled, token_version FROM users WHERE id = ?"),
       cleanExpiredRefresh: db.prepare(
         "DELETE FROM refresh_tokens WHERE expires_at <= datetime('now')",
       ),
@@ -198,6 +202,35 @@ export class AuthService {
     this.stmts.deleteRefresh.run(hash);
   }
 
+  /**
+   * Issue #1305 — end a user's sessions by deleting all their refresh tokens.
+   *
+   * Access tokens already issued are not listed anywhere, but none outlives
+   * this for long: `verifyAccessToken` re-reads the account on every request,
+   * so a disable or a role change applies at once, and a password change
+   * bumps `users.token_version`, which refuses every token issued before it.
+   */
+  revokeUserSessions(userId: string): number {
+    const result = this.stmts.deleteUserRefreshTokens.run(userId);
+    if (result.changes > 0) {
+      this.logger.info({ userId, revoked: result.changes }, "User sessions revoked");
+    }
+    return result.changes;
+  }
+
+  /**
+   * Issue #1305 — a fresh session for the caller after their own sessions were
+   * revoked (password change), so the browser that made the change stays in
+   * while every other one is out.
+   */
+  reissueSession(userId: string): AuthTokens {
+    const user = this.userManager.getById(userId);
+    if (!user || !user.enabled) {
+      throw new AuthError("User not found or disabled", 401);
+    }
+    return this.generateTokens(user);
+  }
+
   verifyAccessToken(token: string): JwtPayload {
     let payload: JwtPayload;
     try {
@@ -210,11 +243,28 @@ export class AuthService {
     if (payload.purpose === "mfa_pending") {
       throw new AuthError("Invalid or expired token", 401);
     }
-    return payload;
+    // Issue #1305 — the token proves who the caller was at issue time, not what
+    // they may do now. A deleted or disabled account is refused, a token from
+    // before the last password change (older `tv`) is refused, and the role is
+    // the stored one, so a demotion takes effect on the next request rather
+    // than when the token expires.
+    const state = this.stmts.getSessionState.get(payload.userId) as
+      { role: UserRole; enabled: number; token_version: number } | undefined;
+    if (!state || !state.enabled || (payload.tv ?? 0) !== state.token_version) {
+      throw new AuthError("Invalid or expired token", 401);
+    }
+    return { ...payload, role: state.role };
   }
 
   private generateTokens(user: User): AuthTokens {
-    const payload: JwtPayload = { userId: user.id, role: user.role, purpose: "access" };
+    const version = this.stmts.getSessionState.get(user.id) as
+      { token_version: number } | undefined;
+    const payload: JwtPayload = {
+      userId: user.id,
+      role: user.role,
+      purpose: "access",
+      tv: version?.token_version ?? 0,
+    };
     const accessToken = jwt.sign(payload, this.config.secret, {
       expiresIn: this.config.accessTtl,
     });

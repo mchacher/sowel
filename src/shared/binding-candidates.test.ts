@@ -728,3 +728,32 @@ describe("solar command channel inference (spec 152)", () => {
     expect(inferDataBindingCategory("thermostat", "power")).toBe(null);
   });
 });
+
+describe("heater candidates (spec 217)", () => {
+  it("binds the mode and the metering of a pilot-wire module", () => {
+    const result = computeBindingCandidates(
+      "heater",
+      [
+        { key: "state", category: "light_state" },
+        { key: "power", category: "power" },
+        { key: "pilot_wire_mode", category: "pilot_wire_mode" },
+      ],
+      [
+        { key: "state", type: "boolean", category: "light_toggle" },
+        { key: "pilot_wire_mode", type: "enum", category: "set_pilot_wire_mode" },
+      ],
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].dataKeys).toEqual(["pilot_wire_mode", "power"]);
+    expect(result[0].orderKeys).toEqual(["pilot_wire_mode"]);
+  });
+
+  it("keeps grouping everything on a relay", () => {
+    const result = computeBindingCandidates(
+      "heater",
+      [{ key: "state", category: "light_state" }],
+      [{ key: "state", type: "boolean", category: "light_toggle" }],
+    );
+    expect(result[0]).toMatchObject({ id: "all", dataKeys: ["state"], orderKeys: ["state"] });
+  });
+});

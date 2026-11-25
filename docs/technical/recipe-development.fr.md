@@ -342,6 +342,37 @@ options: [
 
 Chaque contrôle de mode (la tuile, la page de zone, la ligne de recette, les cartes d'équipement) la saute alors tant que ce paramètre est absent, `null`, une chaîne vide ou une liste vide ; `0` et `false` comptent comme réglés. Le cœur ne filtre sur rien d'autre : il ne connaît aucun slot de votre recette par son nom, donc une option sans `requiresParam` est toujours proposée. Ignorez quand même ce mode dans `onAction` quand son réglage manque, puisque l'API peut l'envoyer, et avant tout ce que l'action changerait d'autre. Un cœur antérieur à #1210 ignore le champ et cache encore, par son nom, une option `cocoon` sans `cocoonTemp` ou `night` sans `nightTemp`.
 
+## Publier une donnée sur un équipement (spec 214) { #publishing-data-on-an-equipment-spec-214 }
+
+Une recette peut donner à un équipement une valeur qu'aucun appareil ne fournit, par exemple l'état de marche d'un lave-linge lu sur une prise mesurée. La valeur apparaît comme un binding de l'équipement : sa carte, son panneau, son historique, les sélecteurs de binding et les autres recettes (`state-watch`) la lisent comme les autres. On la déclare, puis on la publie :
+
+```typescript
+slots: [{ id: "equipment", name: "Machine", type: "equipment", required: true, description: "" }],
+publishes: [
+  {
+    slot: "equipment", // un de vos slots `equipment`
+    alias: "state",
+    type: "enum", // "number" | "boolean" | "enum" | "text"
+    category: "appliance_state",
+    enumValues: ["off", "ready", "running", "finished"],
+  },
+],
+createInstance(params, ctx) {
+  const eq = params.equipment as string;
+  ctx.helpers.equipmentData.publish(eq, "state", ctx.state.get("cycle") ?? null);
+  // … puis, à chaque changement :
+  ctx.helpers.equipmentData.publish(eq, "state", "running");
+  return { stop() {} };
+},
+```
+
+- **Le binding.** Tant que l'instance tourne, l'équipement porte `virtual:recipe:<instanceId>:<alias>`, avec votre type, votre catégorie et vos valeurs, et le nom de la recette là où un écran nomme la source d'un binding. Il vaut `null` jusqu'à la première publication, et disparaît quand l'instance s'arrête (désactivée, supprimée, modifiée, paquet mis à jour). Il est toujours historisé.
+- **Publier au démarrage.** Le cœur ne garde rien d'un redémarrage à l'autre : republiez depuis votre `ctx.state` au début de `createInstance`, sinon la valeur reste `null` jusqu'au prochain changement.
+- **Les règles.** Le cœur refuse une déclaration sur un slot qui n'est pas un slot `equipment`, un `enum` sans `enumValues` ou un doublon (la recette ne se charge pas). Il refuse une instance dont l'équipement a déjà cet alias venant d'un appareil, ou d'une autre instance active (`400` qui nomme le conflit). `publish` renvoie `{ ok: false, reason }`, sans jamais lever d'exception, pour un alias non déclaré, un équipement hors du slot, une valeur qui ne correspond pas au type, ou un alias qu'un binding d'appareil a pris depuis. `null` est toujours accepté. Chaque refus est journalisé une fois par instance.
+- **Un appareil a la priorité.** Un binding d'appareil ajouté plus tard sous le même alias remplace le vôtre. Un alias que le cœur calcule lui-même (le `state` d'un portail, le `cover_state` d'une couverture de piscine) ne peut pas être publié.
+- **Arrêt.** Quand l'instance s'arrête, la valeur qu'elle laisse repasse à `null` pour les consommateurs en direct. Une closure d'un démarrage précédent (un timer oublié par `stop()`) ne publie plus rien.
+- **Cœurs plus anciens.** `ctx.helpers.equipmentData` n'existe pas avant la spec 214 : exigez-le avec le `sowelVersion` du paquet, ou vérifiez sa présence.
+
 ## RecipeContext
 
 L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :
@@ -358,6 +389,14 @@ L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :
 
 Envoyez les ordres avec `ctx.dispatchOrder`, pas `ctx.equipmentManager.executeOrder` : seul le premier dit à Sowel quelle recette a envoyé l'ordre, ce qui permet au journal d'activité de la nommer (issue #1122).
 
+### Extrêmes du jour d'un thermomètre (spec 211)
+
+Tout thermomètre porte le minimum et le maximum du jour en données calculées, `<alias>_min_today` et `<alias>_max_today` (°C), lues comme n'importe quelle valeur de l'équipement. Elles repartent à minuit heure locale et sont absentes jusqu'au premier échantillon du jour.
+
+- **Quels bindings.** Sur une station `weather`, tout binding de température (spec 134). Sur tout autre équipement, la mesure d'alias `temperature` (catégorie `temperature`, celle dont la zone fait la moyenne — une consigne ne compte jamais) et tout binding `temperature_outdoor`.
+- **`lastUpdated`** est l'instant du dernier échantillon intégré à l'enveloppe, même s'il ne l'a pas élargie : un minimum atteint à 06:30 reste frais à 18:00 tant que la sonde émet.
+- **Événements.** Les deux entrées sont émises en `equipment.data.changed` quand l'enveloppe bouge (un échantillon à l'intérieur ne fait que rafraîchir `lastUpdated`). Une recette qui réagit à chaque changement d'un capteur doit filtrer sur l'alias qu'elle surveille.
+
 ## Helpers partagés
 
 Les packages de recettes accèdent aux utilitaires partagés via `ctx.helpers` (interface `RecipeHelpers` dans `src/shared/types.ts`) :
@@ -369,6 +408,8 @@ Les packages de recettes accèdent aux utilitaires partagés via `ctx.helpers` (
 | `getSunlight()`                                                                | Programmation solaire (spec 126), voir ci-dessous       |
 | `getTariff()`                                                                  | Programmation tarifaire (spec 138), voir ci-dessous     |
 | `energy.claimCapacity()` / `energy.getCapacityState()`                         | Demandes de surplus solaire (spec 140), voir ci-dessous |
+| `equipmentData.publish()`                                                      | Donnée sur un équipement (spec 214), voir plus haut     |
+| `history?.query()`                                                             | Lire l'historique de Sowel (spec 211), voir ci-dessous  |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` retourne les heures de soleil courantes (`"HH:MM"`, offsets spec 023 appliqués). À coupler avec l'événement `sunlight.changed` pour se resynchroniser d'un jour à l'autre ; les champs sont `null` tant que les heures ne sont pas calculées ou sans coordonnées maison.
 
@@ -481,6 +522,30 @@ Règles pour les auteurs (spec 140, tenues par convention et auditées par le co
    `invalid-modulation`. Une baisse que la charge ne suit pas est journalisée
    `budget-not-honored`.
 
+### `history` — lire l'historique (spec 211)
+
+`ctx.helpers.history.query({ equipmentId, alias, from, to?, aggregation })` lit les agrégats horaires ou journaliers que Sowel garde déjà dans InfluxDB, en lecture seule. Préférez-le à un échantillonnage maison : ce sont les chiffres que montrent les graphiques.
+
+```typescript
+if (ctx.helpers.history) {
+  const { points, ok } = await ctx.helpers.history.query({
+    equipmentId: meterId,
+    alias: "energy",
+    from: "-25h", // ISO-8601 ou relatif : -30m, -24h, -7d
+    aggregation: "1h", // "1h" ou "1d" uniquement
+  });
+  // points : [{ time: "2026-11-17T14:00:00.000Z", value: 320 }, ...]
+}
+```
+
+- **Optionnel.** Absent sur un cœur plus ancien et quand InfluxDB n'est pas branché : testez d'abord `ctx.helpers.history`.
+- **Périodes complètes seulement, horodatées à leur début** (ISO-8601 UTC), quelle que soit la catégorie : le point `14:00` est l'heure 14:00–15:00. L'heure ou le jour en cours n'est jamais renvoyé, donc `-24h` à 15:42 donne 23 heures (16:00 la veille à 14:00 aujourd'hui) ; demandez `-25h` pour en avoir 24.
+- **Jours.** `1d` coupe la pluie à minuit heure locale, l'énergie et les mesures continues (température…) à minuit UTC. Pour l'énergie par jour local, lisez `1h` et gardez les heures voulues. Pour les extrêmes du jour, lisez `<alias>_min_today` / `_max_today` : l'historique `1d` ne contient que des jours complets.
+- **Creux.** Une période sans échantillon n'a pas de point ; rien n'est complété par des zéros. Les mesures continues portent aussi `min` et `max`.
+- **Bornes.** La fenêtre est ramenée aux 7 derniers jours. `alias` doit être un binding de données ou une donnée calculée de l'équipement ; un binding booléen ou énuméré, un alias inconnu ou une fenêtre invalide répondent `{ points: [], ok: true }` sans requête.
+- **`ok: false`** signifie qu'InfluxDB n'est pas configuré, injoignable ou en échec, ou que la limite de débit est atteinte — pas qu'il n'y a rien à lire. Un résultat partiel n'est jamais renvoyé.
+- **Limite de débit.** Au plus 10 appels atteignant InfluxDB par minute glissante et par instance ; au-delà, l'appel répond `{ points: [], ok: false }` (il n'est jamais rejeté). Un appel par série et par heure close reste très loin de la limite. Sur `ok: false`, gardez ce que vous avez déjà lu et reprenez au tick suivant.
+
 ## Événements de l'Event Bus
 
 Événements clés auxquels les recettes s'abonnent typiquement :
@@ -504,11 +569,12 @@ Règles pour les auteurs (spec 140, tenues par convention et auditées par le co
 
 Le catalogue vivant est `plugins/registry.json` dans le repo Sowel (chaque entrée `"type": "recipe"`, un dépôt GitHub par recette). Bons exemples à copier :
 
-| Dépôt                          | Illustre                                                           |
-| ------------------------------ | ------------------------------------------------------------------ |
-| `sowel-recipe-schedule-on-off` | Timers, bornes solaires (`getSunlight`), slots select, i18n, tests |
-| `sowel-recipe-state-watch`     | Surveillance générique d'une clé de donnée avec alarme             |
-| `sowel-recipe-motion-light`    | Pattern classique capteur vers actionneur avec délai               |
+| Dépôt                          | Illustre                                                              |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `sowel-recipe-schedule-on-off` | Timers, bornes solaires (`getSunlight`), slots select, i18n, tests    |
+| `sowel-recipe-state-watch`     | Surveillance générique d'une clé de donnée avec alarme                |
+| `sowel-recipe-appliance-cycle` | Publie une valeur sur un équipement (spec 214), lève sa propre alarme |
+| `sowel-recipe-motion-light`    | Pattern classique capteur vers actionneur avec délai                  |
 
 ## Checklist
 

@@ -471,6 +471,7 @@ Every change is saved whole; a 30 s tick closes due windows, prices those whose 
 - **Auth-by-default** (spec 105): a global Fastify `onRequest` hook enforces authentication on every `/api/v1/*` route. The list of public routes is the `PUBLIC_ROUTES` constant in `src/auth/auth-middleware.ts` (`/health`, `/auth/status`, `/auth/setup`, `/auth/login`, `/auth/refresh`, `/auth/mfa/verify`) plus OAuth callback paths. Any new route is protected unless explicitly added to that whitelist.
 - **Roles**: `admin` > `standard` > `viewer` (hierarchical permissions).
 - **First-run setup**: `POST /api/v1/auth/setup` creates the first admin user.
+- **Session revocation** (issue #1305): `verifyAccessToken` re-reads the account on every HTTP request, so a disabled or deleted account is refused and the stored role applies, not the one signed into the token. A password change deletes every refresh token of the account, bumps `users.token_version`, carried in every access token as the `tv` claim, so that access tokens issued earlier are refused, and hands the caller a fresh pair. A role change, a disable or an admin MFA reset deletes the user's refresh tokens. WebSockets are checked at connect time only.
 
 ### Two-factor authentication (spec 151)
 
@@ -823,20 +824,21 @@ See spec 061 at [github.com/mchacher/sowel/tree/main/specs/061-timezone-from-hom
 
 All settings are optional with sensible defaults -- Sowel runs zero-config out of the box. Override via `.env` if needed:
 
-| Variable          | Default                         | Notes                                                                                |
-| ----------------- | ------------------------------- | ------------------------------------------------------------------------------------ |
-| `SQLITE_PATH`     | `./data/sowel.db`               | SQLite database path                                                                 |
-| `API_PORT`        | `3000`                          | HTTP server port                                                                     |
-| `API_HOST`        | `0.0.0.0`                       | Bind address                                                                         |
-| `JWT_SECRET`      | auto-generated                  | Persisted in `data/.jwt-secret` on first launch                                      |
-| `JWT_ACCESS_TTL`  | `900`                           | Access token TTL in seconds (15 min)                                                 |
-| `JWT_REFRESH_TTL` | `2592000`                       | Refresh token TTL in seconds (30 days)                                               |
-| `LOG_LEVEL`       | `info`                          | Pino log level                                                                       |
-| `CORS_ORIGINS`    | `localhost:3000,localhost:5173` | Comma-separated allowed origins. `*` is permitted but warns at startup               |
-| `INFLUX_URL`      | `http://localhost:8086`         | InfluxDB 2.x URL                                                                     |
-| `INFLUX_TOKEN`    | shared default constant         | Matches `docker-compose.yml`. `data/.influx-token` is read if present, never written |
-| `INFLUX_ORG`      | `sowel`                         | InfluxDB organization                                                                |
-| `INFLUX_BUCKET`   | `sowel`                         | InfluxDB primary bucket                                                              |
-| `TZ`              | system default (UTC in Docker)  | IANA timezone. Set explicitly in docker-compose to fix time-based logic.             |
+| Variable                | Default                         | Notes                                                                                    |
+| ----------------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `SQLITE_PATH`           | `./data/sowel.db`               | SQLite database path                                                                     |
+| `API_PORT`              | `3000`                          | HTTP server port                                                                         |
+| `API_HOST`              | `0.0.0.0`                       | Bind address                                                                             |
+| `JWT_SECRET`            | auto-generated                  | Persisted in `data/.jwt-secret` on first launch                                          |
+| `JWT_ACCESS_TTL`        | `900`                           | Access token TTL in seconds (15 min)                                                     |
+| `JWT_REFRESH_TTL`       | `2592000`                       | Refresh token TTL in seconds (30 days)                                                   |
+| `LOG_LEVEL`             | `info`                          | Pino log level                                                                           |
+| `CORS_ORIGINS`          | `localhost:3000,localhost:5173` | Comma-separated allowed origins. `*` is permitted but warns at startup                   |
+| `SOWEL_TRUSTED_PROXIES` | (empty)                         | Proxy addresses (IPs or CIDRs) whose `X-Forwarded-For` is believed. See deployment guide |
+| `INFLUX_URL`            | `http://localhost:8086`         | InfluxDB 2.x URL                                                                         |
+| `INFLUX_TOKEN`          | shared default constant         | Matches `docker-compose.yml`. `data/.influx-token` is read if present, never written     |
+| `INFLUX_ORG`            | `sowel`                         | InfluxDB organization                                                                    |
+| `INFLUX_BUCKET`         | `sowel`                         | InfluxDB primary bucket                                                                  |
+| `TZ`                    | system default (UTC in Docker)  | IANA timezone. Set explicitly in docker-compose to fix time-based logic.                 |
 
 Integration settings (MQTT, cloud credentials, polling intervals) are configured from the UI, not from `.env`.

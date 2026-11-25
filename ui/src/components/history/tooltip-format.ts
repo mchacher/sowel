@@ -16,6 +16,8 @@ export interface TooltipSeries {
   id: string;
   alias: string;
   category: string;
+  /** Spec 213 — more than two declared values keeps it off the 0/1 reading. */
+  enumValues?: readonly string[];
   deviceName: string;
   sameCategoryCount: number;
   equipmentName: string;
@@ -110,7 +112,7 @@ export function formatTooltipRow(
   if (!Number.isFinite(num)) return null;
 
   let valueText: string;
-  if (isBooleanCategory(s.category)) {
+  if (isBooleanCategory(s.category, s.enumValues)) {
     const [offKey, onKey] = booleanTickLabels(s.category);
     if (num <= 0.05) valueText = t(offKey);
     else if (num >= 0.95) valueText = t(onKey);

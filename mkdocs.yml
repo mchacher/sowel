@@ -1,6 +1,6 @@
 site_name: Sowel Documentation
 site_url: https://docs.sowel.org
-site_description: Documentation for Sowel — Open-source home automation engine
+site_description: Documentation for Sowel, an open-source home automation engine
 site_author: Marc Chachereau
 repo_url: https://github.com/mchacher/sowel
 repo_name: mchacher/sowel
@@ -9,7 +9,7 @@ edit_uri: edit/main/docs/
 theme:
   name: material
   language: en
-  logo: assets/logo.svg
+  logo: assets/logo-night.svg
   favicon: assets/favicon.svg
   font:
     text: Inter
@@ -45,7 +45,7 @@ extra_css:
   - stylesheets/extra.css
 
 extra_javascript:
-  - javascripts/landing.js
+  - javascripts/header-link.js
 
 markdown_extensions:
   - admonition
@@ -93,6 +93,7 @@ plugins:
         - locale: fr
           name: Français
           build: true
+          site_name: Documentation Sowel
           nav_translations:
             Home: Accueil
             In Depth: En profondeur
@@ -107,12 +108,15 @@ plugins:
             Recipe Development: Développement de recettes
             Data Model: Modèle de données
             Contributing: Contribuer
+            Dependency Management: Gestion des dépendances
+            Overview: Vue d'ensemble
             Specs Index: Index des specs
             User Guide: Guide utilisateur
+            Preparing the Host: Préparer l'hôte
             Getting Started: Premiers pas
-            Devices: Devices
+            Devices: Appareils
             Equipments: Équipements
-            Dashboard: Page Accueil
+            Dashboard: Tableau de bord
             Zones & Rooms: Zones et pièces
             Modes & Calendar: Modes et calendrier
             Recipes: Recettes
@@ -124,27 +128,6 @@ plugins:
 
 nav:
   - Home: index.md
-  - Technical Guide:
-    - technical/index.md
-    - Architecture: technical/architecture.md
-    - Deployment: technical/deployment.md
-    - API Reference: technical/api-reference.md
-    - Plugin Development: technical/plugin-development.md
-    - Recipe Development: technical/recipe-development.md
-    - Data Model:
-      - technical/data-model.md
-      - Devices: technical/data-model/devices.md
-      - Equipments: technical/data-model/equipments.md
-      - Zones: technical/data-model/zones.md
-      - Modes: technical/data-model/modes.md
-      - Recipes: technical/data-model/recipes.md
-    - Contributing: technical/contributing.md
-    - Dependency Management: technical/dependency-management.md
-    - Specs Index: specs-index.md
-  - In Depth:
-    - Where the Energy Goes: deep-dives/energy-tour.md
-    - The Surplus Arbiter: deep-dives/surplus-arbiter.md
-    - Watching Over the Panels: deep-dives/pv-health.md
   - User Guide:
     - user/index.md
     - Preparing the Host: user/host-setup.md
@@ -160,7 +143,27 @@ nav:
     - Shared Access: user/shared-access.md
     - Remote Access: user/remote-access.md
     - Release Notes: release-notes.md
-
+  - In Depth:
+    - Where the Energy Goes: deep-dives/energy-tour.md
+    - The Surplus Arbiter: deep-dives/surplus-arbiter.md
+    - Watching Over the Panels: deep-dives/pv-health.md
+  - Technical Guide:
+    - technical/index.md
+    - Architecture: technical/architecture.md
+    - Deployment: technical/deployment.md
+    - API Reference: technical/api-reference.md
+    - Plugin Development: technical/plugin-development.md
+    - Recipe Development: technical/recipe-development.md
+    - Data Model:
+      - Overview: technical/data-model.md
+      - Devices: technical/data-model/devices.md
+      - Equipments: technical/data-model/equipments.md
+      - Zones: technical/data-model/zones.md
+      - Modes: technical/data-model/modes.md
+      - Recipes: technical/data-model/recipes.md
+    - Contributing: technical/contributing.md
+    - Dependency Management: technical/dependency-management.md
+    - Specs Index: specs-index.md
 extra:
   alternate:
     - name: English

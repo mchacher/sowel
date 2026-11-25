@@ -24,6 +24,7 @@
 
 import type { DataCategory, DataType, EquipmentType, OrderCategory } from "./types.js";
 import { THERMOSTAT_STATE_ALIAS, isThermostatDevice } from "./thermostat-contract.js";
+import { pilotWireBindingKeys } from "./heater-contract.js";
 import { METERING_CATEGORIES } from "./constants.js";
 
 /** Structural subset of a device_data row this module needs. */
@@ -463,6 +464,9 @@ export function computeBindingCandidates(
     }
 
     case "heater": {
+      // Spec 217 — a pilot-wire module binds its mode and metering only.
+      const pilot = pilotWireBindingKeys(deviceData, deviceOrders);
+      if (pilot) return [{ id: "pilot_wire", label: "Pilot wire", ...pilot }];
       // Single candidate grouping everything (power/setpoint/temperature).
       if (deviceData.length === 0 && deviceOrders.length === 0) return [];
       return [

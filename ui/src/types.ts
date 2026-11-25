@@ -93,6 +93,9 @@ export type DataCategory =
   | "ev_charge_limit"
   // Spec 194 — the power the car says it charges at (W).
   | "ev_charge_power"
+  // Spec 217 — a heater's pilot-wire order. Closed enum, values in
+  // PILOT_WIRE_MODES (heater-contract.ts).
+  | "pilot_wire_mode"
   | "generic";
 
 export type OrderCategory =
@@ -106,6 +109,8 @@ export type OrderCategory =
   | "set_setpoint"
   // Spec 177 — set a thermostat's operating mode (values: OPERATION_MODE_VALUES).
   | "set_operation_mode"
+  // Spec 217 — set a heater's pilot-wire order (values: PILOT_WIRE_MODES).
+  | "set_pilot_wire_mode"
   | "gate_trigger"
   | "valve_toggle"
   | "toggle_mute"
@@ -548,6 +553,8 @@ export interface ArbiterLoadInfo {
   toleratedImportW: number | null;
   sinceIso?: string;
   reasonWaiting?: string;
+  /** #1262 — pending and covered: when the engage hold ends. */
+  engageAtIso?: string;
   untilIso?: string;
   instanceId?: string;
   note?: string;
@@ -569,6 +576,8 @@ export interface ArbiterPublicState {
   dormant: boolean;
   /** #807 - the configured engage margin, stated under the roster table. */
   engageMarginW: number;
+  /** #1262 — the configured engage hold, the length of the countdown bar. */
+  engageHoldS?: number;
   /** @deprecated Spec 165 — superseded by `loads`. */
   grants: Array<{
     equipmentId: string;
@@ -769,6 +778,10 @@ export interface HistoryBindingState {
   type: string; // "number" | "boolean" | "enum"
   historize: number | null;
   effectiveOn: boolean;
+  /** Spec 214 — published by a recipe, not a device: always historized. */
+  virtual?: boolean;
+  /** Declared values of an enum series, in their charted order. */
+  enumValues?: string[];
 }
 
 export interface HistoryPoint {
@@ -1757,6 +1770,8 @@ export interface IntegrationInfo {
   settings: IntegrationSettingDef[];
   settingValues: Record<string, string>;
   polling?: { lastPollAt: string; intervalMs: number };
+  /** Spec 216: why the integration is not connected, from the plugin. */
+  statusDetail?: string;
   deviceCount: number;
   offlineDeviceCount: number;
   pluginVersion?: string;

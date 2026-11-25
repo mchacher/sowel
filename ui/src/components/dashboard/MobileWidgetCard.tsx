@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { DashboardWidget, EquipmentWithDetails } from "../../types";
+import { heaterModeKey } from "../equipments/heaterMode";
+import { isHeaterRunning, resolveHeaterState } from "../../lib/heater-contract";
 import { useEquipmentState } from "../equipments/useEquipmentState";
 import {
   getSensorBindings,
@@ -31,6 +33,7 @@ import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { formatRelative } from "../../lib/format-relative";
+import { applianceIsOn, applianceState, applianceStateLabelKey } from "../../lib/appliance";
 import {
   formatEnergy,
   formatNumber,
@@ -332,16 +335,13 @@ function useMobileState(
   }
 
   if (isHeater) {
-    const stateBinding = equipment.dataBindings.find(
-      (b) => b.alias === "state" || b.category === "light_state",
-    );
-    const relayOn = stateBinding
-      ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
-      : false;
-    const isComfort = !relayOn;
+    const state = resolveHeaterState(equipment.dataBindings, equipment.orderBindings);
     return {
-      icon: renderWidgetStateIcon(widget.icon, <HeaterWidgetIcon comfort={isComfort} />),
-      stateLines: [isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")],
+      icon: renderWidgetStateIcon(
+        widget.icon,
+        <HeaterWidgetIcon comfort={isHeaterRunning(state)} />,
+      ),
+      stateLines: [t(heaterModeKey(state.mode))],
     };
   }
 
@@ -483,11 +483,11 @@ function useMobileState(
   }
 
   if (isAppliance) {
-    const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
-    const stateBinding = equipment.dataBindings.find((b) => b.alias === "state");
     const remainingBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time_str");
-    const applianceOn = powerBinding?.value === true;
-    const state = typeof stateBinding?.value === "string" ? stateBinding.value : "off";
+    // Spec 213 — on/off from the run state, reported or derived from watts.
+    const applianceOn = applianceIsOn(equipment.dataBindings);
+    const state = applianceState(equipment.dataBindings) ?? "off";
+    const stateLabelKey = applianceStateLabelKey(state);
     const remainingStr =
       typeof remainingBinding?.value === "string" ? remainingBinding.value : null;
     const isRunning = state === "running";
@@ -498,7 +498,7 @@ function useMobileState(
     } else if (isRunning && remainingStr) {
       lines.push(remainingStr);
     } else {
-      lines.push(state === "paused" ? t("common.paused") : state === "ready" ? "Ready" : state);
+      lines.push(stateLabelKey ? t(stateLabelKey) : state);
     }
     return {
       icon: (

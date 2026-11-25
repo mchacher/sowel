@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   X,
@@ -36,6 +36,9 @@ interface IntegrationDrawerProps {
   onRefresh: () => void;
 }
 
+/** Spec 216: second read of the list after a start, once the plugin knows why it failed. */
+const STATUS_FOLLOW_UP_MS = 3000;
+
 export function IntegrationDrawer({ integration, onClose, onRefresh }: IntegrationDrawerProps) {
   const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -43,7 +46,20 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  // Spec 216: a plugin learns why it cannot connect a moment after start()
+  // returns (the broker refuses, the name does not resolve), so the list is
+  // read again shortly after a start to show that reason.
+  const followUp = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (followUp.current) clearTimeout(followUp.current);
+    },
+    [],
+  );
   const [oauthLoading, setOauthLoading] = useState(false);
+  // Spec 212: an empty required field is marked once left or saved, never on open.
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [triedSave, setTriedSave] = useState(false);
 
   // Reset form when integration changes — fill defaults for empty fields
   useEffect(() => {
@@ -59,6 +75,14 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
       setMessage(null);
     }
   }, [integration]);
+
+  // Spec 212 review: the list reloads after a save and hands a new object for
+  // the same integration; the marks of that form must survive it.
+  const integrationId = integration?.id;
+  useEffect(() => {
+    setTouched({});
+    setTriedSave(false);
+  }, [integrationId]);
 
   // Close on Escape
   useEffect(() => {
@@ -79,12 +103,27 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const handleOAuthConnect = async () => {
     setOauthLoading(true);
     try {
+      // Spec 212 R7: the provider is reached with what the form shows, not
+      // with the settings saved before the last edit.
+      // A connected plugin's "Reconnect" keeps its old behaviour: unsaved
+      // edits go through Save, which also restarts it (spec 212 review).
+      if (dirty && !isConnected) {
+        setTriedSave(true);
+        await saveSettings();
+        onRefresh();
+      }
       const { url } = await getPluginOAuthUrl(integration.id);
-      window.location.href = url;
+      window.location.assign(url);
     } catch (err) {
       showMessage("error", err instanceof Error ? err.message : t("common.error"));
       setOauthLoading(false);
     }
+  };
+
+  const refreshAfterStart = () => {
+    onRefresh();
+    if (followUp.current) clearTimeout(followUp.current);
+    followUp.current = setTimeout(onRefresh, STATUS_FOLLOW_UP_MS);
   };
 
   const isDisabled = integration.enabled === false;
@@ -94,32 +133,45 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const isConnected = !isDisabled && integration.status === "connected";
   const isError = !isDisabled && integration.status === "error";
   const hasRefresh = !!integration.polling;
-  const hasRequiredEmpty = integration.settings.some((s) => s.required && !values[s.key]?.trim());
+  const missing = integration.settings.filter((s) => s.required && !values[s.key]?.trim());
+  const hasRequiredEmpty = missing.length > 0;
+  const missingLabels = missing.map((s) => s.label).join(", ");
+  const fieldId = (key: string) => `integration-${integration.id}-${key}`;
+  const isMarked = (s: IntegrationSettingDef) =>
+    missing.includes(s) && (touched[s.key] === true || triedSave);
+  const focusField = (key: string) => document.getElementById(fieldId(key))?.focus();
 
   const handleFieldChange = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
     setDirty(true);
   };
 
+  /** Writes the form; shared by Save and by Save-and-connect (spec 212). */
+  const saveSettings = async () => {
+    const PASSWORD_MASK = "••••••••";
+    const entries: Record<string, string> = {};
+    for (const [key, value] of Object.entries(values)) {
+      const setting = integration.settings.find((s) => s.key === key);
+      if (setting?.type === "password" && value === PASSWORD_MASK) continue;
+      entries[`integration.${integration.id}.${key}`] = value;
+    }
+    await updateSettings(entries);
+    setDirty(false);
+  };
+
   const handleSave = async () => {
     setSaving(true);
+    setTriedSave(true);
     try {
-      const PASSWORD_MASK = "••••••••";
-      const entries: Record<string, string> = {};
-      for (const [key, value] of Object.entries(values)) {
-        const setting = integration.settings.find((s) => s.key === key);
-        if (setting?.type === "password" && value === PASSWORD_MASK) continue;
-        entries[`integration.${integration.id}.${key}`] = value;
-      }
-      await updateSettings(entries);
-      setDirty(false);
+      await saveSettings();
       if (isConnected) {
         await restartIntegration(integration.id);
         showMessage("success", t("integrations.savedRestarted"));
+        refreshAfterStart();
       } else {
         showMessage("success", t("integrations.saved"));
+        onRefresh();
       }
-      onRefresh();
     } catch (err) {
       showMessage("error", err instanceof Error ? err.message : t("common.error"));
     } finally {
@@ -158,7 +210,8 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           showMessage("success", t("integrations.disabled"));
           break;
       }
-      onRefresh();
+      if (action === "start" || action === "restart" || action === "enable") refreshAfterStart();
+      else onRefresh();
     } catch (err) {
       showMessage("error", err instanceof Error ? err.message : t("common.error"));
     } finally {
@@ -249,6 +302,20 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
             </div>
           </div>
 
+          {/* Spec 216: the plugin's reason, while it is not connected */}
+          {!isDisabled && !isConnected && integration.statusDetail && (
+            <div
+              role="status"
+              className="flex items-start gap-2 bg-background rounded-md p-3 text-small text-text-secondary"
+            >
+              <AlertTriangle
+                size={14}
+                className={`mt-0.5 shrink-0 ${isError ? "text-error" : "text-warning-ink"}`}
+              />
+              <span className="break-words min-w-0">{integration.statusDetail}</span>
+            </div>
+          )}
+
           {/* Actions */}
           <div>
             <h3 className="text-lead font-semibold text-text mb-3">{t("integrations.actions")}</h3>
@@ -294,9 +361,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 <>
                   <ActionButton
                     icon={<Play size={14} />}
-                    label={
-                      hasRequiredEmpty ? t("integrations.fillRequired") : t("integrations.start")
-                    }
+                    label={t("integrations.start")}
                     loading={actionLoading === "start"}
                     onClick={() => handleAction("start")}
                     primary
@@ -311,6 +376,24 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 </>
               )}
             </div>
+            {hasRequiredEmpty && !isDisabled && !isConnected && (
+              <p className="text-caption text-error mt-2" role="status">
+                {t("integrations.missingFields")}{" "}
+                {missing.map((s, i) => (
+                  <span key={s.key}>
+                    {i > 0 && ", "}
+                    <button
+                      type="button"
+                      onClick={() => focusField(s.key)}
+                      className="underline underline-offset-2 cursor-pointer"
+                    >
+                      {s.label}
+                    </button>
+                    {i === missing.length - 1 && "."}
+                  </span>
+                ))}
+              </p>
+            )}
           </div>
 
           {/* Message */}
@@ -331,9 +414,12 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
               {integration.settings.map((setting) => (
                 <SettingField
                   key={setting.key}
+                  id={fieldId(setting.key)}
                   setting={setting}
                   value={values[setting.key] ?? ""}
                   onChange={(val) => handleFieldChange(setting.key, val)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, [setting.key]: true }))}
+                  invalidMessage={isMarked(setting) ? t("integrations.requiredField") : undefined}
                 />
               ))}
             </div>
@@ -370,12 +456,14 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                   ) : (
                     <ExternalLink size={15} />
                   )}
-                  {t("integrations.oauthConnect")}
+                  {dirty && !hasRequiredEmpty
+                    ? t("integrations.oauthSaveAndConnect", { name: integration.name })
+                    : t("integrations.oauthConnect", { name: integration.name })}
                 </button>
               )}
               {hasRequiredEmpty && !isConnected && (
                 <p className="text-caption text-text-tertiary mt-2">
-                  {t("integrations.oauthFillFirst")}
+                  {t("integrations.oauthFillFirst", { fields: missingLabels })}
                 </p>
               )}
             </div>
@@ -436,13 +524,20 @@ function ActionButton({
 }
 
 function SettingField({
+  id,
   setting,
   value,
   onChange,
+  onBlur,
+  invalidMessage,
 }: {
+  id: string;
   setting: IntegrationSettingDef;
   value: string;
   onChange: (val: string) => void;
+  onBlur?: () => void;
+  /** Spec 212: set when a required field is empty and was left or saved. */
+  invalidMessage?: string;
 }) {
   if (setting.type === "boolean") {
     const checked = value === "true";
@@ -460,7 +555,7 @@ function SettingField({
 
   return (
     <div>
-      <label className={FIELD_LABEL}>
+      <label htmlFor={id} className={FIELD_LABEL}>
         {setting.label}
         {setting.required ? (
           <span className="text-error ml-0.5">*</span>
@@ -469,12 +564,21 @@ function SettingField({
         )}
       </label>
       <input
+        id={id}
         type={setting.type === "password" ? "password" : "text"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         placeholder={setting.placeholder ?? ""}
-        className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+        aria-invalid={invalidMessage ? true : undefined}
+        aria-describedby={invalidMessage ? `${id}-error` : undefined}
+        className={`w-full px-3 py-2 text-body bg-background border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary ${invalidMessage ? "border-error" : "border-border"}`}
       />
+      {invalidMessage && (
+        <p id={`${id}-error`} className="text-caption text-error mt-1">
+          {invalidMessage}
+        </p>
+      )}
     </div>
   );
 }

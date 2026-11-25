@@ -101,6 +101,9 @@ export type DataCategory =
   | "ev_charge_limit"
   // Spec 194 — the power the car says it charges at (W).
   | "ev_charge_power"
+  // Spec 217 — a heater's pilot-wire order. Closed enum, values in
+  // PILOT_WIRE_MODES (heater-contract.ts).
+  | "pilot_wire_mode"
   | "generic";
 
 export type OrderCategory =
@@ -114,6 +117,8 @@ export type OrderCategory =
   | "set_setpoint"
   // Spec 177 — set a thermostat's operating mode (values: OPERATION_MODE_VALUES).
   | "set_operation_mode"
+  // Spec 217 — set a heater's pilot-wire order (values: PILOT_WIRE_MODES).
+  | "set_pilot_wire_mode"
   | "gate_trigger"
   | "valve_toggle"
   | "toggle_mute"
@@ -803,12 +808,32 @@ export interface RecipeTileDef {
   confirmFrom?: string;
 }
 
+/**
+ * Spec 214 — data a recipe publishes on the equipment of one of its
+ * `equipment` slots. It shows as a virtual binding of that equipment
+ * (`virtual:recipe:<instanceId>:<alias>`), read by surfaces, history and other
+ * recipes like a device binding. Declared, so the core can refuse what was not.
+ */
+export interface RecipePublishDef {
+  /** Id of an `equipment` slot of this recipe. */
+  slot: string;
+  /** The alias the data takes on the equipment. */
+  alias: string;
+  type: "number" | "boolean" | "enum" | "text";
+  category: DataCategory;
+  /** Required when `type` is `enum`. */
+  enumValues?: string[];
+  unit?: string;
+}
+
 export interface RecipeInfo {
   id: string;
   name: string;
   description: string;
   slots: RecipeSlotDef[];
   actions?: RecipeActionDef[];
+  /** Spec 214 — present only when the recipe publishes data on an equipment. */
+  publishes?: RecipePublishDef[];
   /** Spec 169 — present only when the package declares a Dashboard tile. */
   tile?: RecipeTileDef;
   i18n?: Record<string, RecipeLangPack>;
@@ -848,6 +873,8 @@ export interface RecipeDefinition {
   description: string;
   slots: RecipeSlotDef[];
   actions?: RecipeActionDef[];
+  /** Spec 214 — data this recipe publishes on its equipments. */
+  publishes?: RecipePublishDef[];
   /** Spec 169 — declare a Dashboard tile. Absent = this recipe is not pinnable. */
   tile?: RecipeTileDef;
   i18n?: Record<string, RecipeLangPack>;
@@ -906,6 +933,55 @@ export interface RecipeHelpers {
    *  "absent" (older core, `ctx.helpers.energy === undefined`) from "present
    *  but off" without probing. */
   energy: RecipeEnergyHelpers;
+  /** Spec 214 — publish the data this recipe declares in `publishes`.
+   *  Absent on an older core. */
+  equipmentData: RecipeEquipmentDataHelpers;
+  /** Spec 211 — read the history Sowel keeps, read-only and bounded.
+   *  Optional: absent on an older core, and when InfluxDB is not wired. */
+  history?: RecipeHistory;
+}
+
+/** Spec 211 FR2.2 — parameters of `ctx.helpers.history.query`. */
+export interface RecipeHistoryQuery {
+  equipmentId: string;
+  /** A data binding of the equipment, or one of its computed data entries. */
+  alias: string;
+  /** ISO-8601 or relative (`-30m`, `-24h`, `-7d`). Clamped to the last 7 days. */
+  from: string;
+  /** Same forms (a relative `to` exists on the recipe path only). Defaults to now. */
+  to?: string;
+  aggregation: "1h" | "1d";
+}
+
+/**
+ * Spec 211 FR2.2 — complete periods only, each stamped at its start (UTC
+ * ISO-8601), sparse. `ok: false` means InfluxDB is not configured or failed, or the rate limit was reached;
+ * `ok: true` with no points means there is nothing to read.
+ */
+export interface RecipeHistoryResult {
+  points: HistoryPoint[];
+  ok: boolean;
+}
+
+/** Spec 211 FR2 — `ctx.helpers.history`. */
+export interface RecipeHistory {
+  /** Never throws. Beyond 10 calls reaching InfluxDB per rolling minute,
+   *  answers `ok: false` like an InfluxDB failure. */
+  query(params: RecipeHistoryQuery): Promise<RecipeHistoryResult>;
+}
+
+/** Spec 214 — the per-instance publishing channel. */
+export interface RecipeEquipmentDataHelpers {
+  /**
+   * Set a declared alias on an equipment of the declaring slot. `null` means
+   * unknown. Never throws: a refusal comes back as `{ ok: false, reason }` and
+   * is logged.
+   */
+  publish(
+    equipmentId: string,
+    alias: string,
+    value: unknown,
+  ): { ok: true } | { ok: false; reason: string };
 }
 
 // ============================================================
@@ -1221,6 +1297,10 @@ export interface ArbiterLoadInfo {
   sinceIso?: string;
   /** Pending: the stable reason code the UI translates. */
   reasonWaiting?: string;
+  /** #1262 — pending and covered: when its engage hold ends and the grant
+   *  pass serves it. Absent while the claim is short of surplus or held back
+   *  by something else (cooldown, override, unresponsive). */
+  engageAtIso?: string;
   /** Suspended: when the arbiter takes the load back. */
   untilIso?: string;
   /** Granted / pending: the claiming recipe instance. */
@@ -1252,6 +1332,9 @@ export interface ArbiterPublicState {
   /** #807 - the configured engage margin, so the roster can state the
    *  arithmetic behind `needW` instead of hiding it in a tooltip. */
   engageMarginW: number;
+  /** #1262 — the configured engage hold, the length the roster's countdown
+   *  bar is drawn against. */
+  engageHoldS: number;
   /** @deprecated Spec 165 — superseded by `loads`, kept one minor version for
    *  external readers. Removed in the follow-up spec. */
   grants: ArbiterGrantInfo[];
@@ -2130,6 +2213,8 @@ export interface IntegrationInfo {
   settings: IntegrationSettingDef[];
   configured: boolean;
   polling?: { lastPollAt: string; intervalMs: number };
+  /** Spec 216: why the integration is not connected, from the plugin. */
+  statusDetail?: string;
   deviceCount: number;
   offlineDeviceCount: number;
   /** True if the integration supports OAuth 2.0 authorization flow */
@@ -2442,6 +2527,11 @@ export interface AppConfig {
   api: {
     port: number;
     host: string;
+    /**
+     * Socket peers whose `X-Forwarded-For` is believed (SOWEL_TRUSTED_PROXIES).
+     * Empty = trust nobody: `request.ip` is the socket peer.
+     */
+    trustedProxies: string[];
   };
   jwt: {
     secret: string;

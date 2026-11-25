@@ -346,6 +346,37 @@ options: [
 
 Every mode control (the tile, the zone page, the recipe row, the equipment cards) then skips it while that parameter is absent, `null`, an empty string or an empty list; `0` and `false` count as set. The core filters on nothing else: it knows no slot of your recipe by name, so an option without `requiresParam` is always offered. Still ignore such a mode in `onAction` when its setting is missing, since the API can send it anyway, and do so before anything else the action would change. A core older than #1210 ignores the field and still hides, by name, an option `cocoon` without `cocoonTemp` or `night` without `nightTemp`.
 
+## Publishing data on an equipment (spec 214)
+
+A recipe can give an equipment a value no device reports: a washing machine's run state read on a metering plug, say. The value shows as a binding of the equipment, so its card, its panel, its history, the binding pickers and other recipes (`state-watch`) read it like any other. Declare it, then publish it:
+
+```typescript
+slots: [{ id: "equipment", name: "Machine", type: "equipment", required: true, description: "" }],
+publishes: [
+  {
+    slot: "equipment", // one of your `equipment` slots
+    alias: "state",
+    type: "enum", // "number" | "boolean" | "enum" | "text"
+    category: "appliance_state",
+    enumValues: ["off", "ready", "running", "finished"],
+  },
+],
+createInstance(params, ctx) {
+  const eq = params.equipment as string;
+  ctx.helpers.equipmentData.publish(eq, "state", ctx.state.get("cycle") ?? null);
+  // … later, on each change:
+  ctx.helpers.equipmentData.publish(eq, "state", "running");
+  return { stop() {} };
+},
+```
+
+- **The binding.** While the instance runs, the equipment carries `virtual:recipe:<instanceId>:<alias>`, with your type, category and values, and your recipe's name where a surface names a binding's source. It is `null` until your first publish, and goes when the instance stops (disabled, deleted, updated, package updated). It is always historized.
+- **Publish at start.** The core keeps nothing across a restart: republish from your own `ctx.state` at the start of `createInstance`, or the value stays `null` until the next change.
+- **The rules.** The core refuses a declaration on a slot that is not an `equipment` slot, an `enum` without `enumValues` or a duplicate (the recipe does not load). It refuses an instance whose equipment already has that alias from a device, or from another enabled instance (`400` naming the conflict). `publish` returns `{ ok: false, reason }`, never throws, for an alias you did not declare, an equipment outside the slot, a value that does not fit the type, or an alias a device binding took since. `null` always fits. Each refusal is logged once per instance.
+- **A device wins.** A device binding added later with the same alias replaces yours. An alias the core derives itself (a gate's `state`, a pool cover's `cover_state`) cannot be published.
+- **Stop.** When the instance stops, a value it left is cleared to `null` for live consumers. A closure from an earlier start (a timer `stop()` missed) publishes nothing.
+- **Older cores.** `ctx.helpers.equipmentData` is absent before spec 214: require it with your package's `sowelVersion`, or check for it.
+
 ## RecipeContext
 
 The `ctx` object injected into `validate()` and `createInstance()` provides:
@@ -362,6 +393,14 @@ The `ctx` object injected into `validate()` and `createInstance()` provides:
 
 Send orders with `ctx.dispatchOrder`, not `ctx.equipmentManager.executeOrder`: only the former tells Sowel which recipe sent the order, so the Activity feed can name it (issue #1122).
 
+### Today's extremes of a thermometer (spec 211)
+
+Every thermometer carries today's minimum and maximum as computed data, `<alias>_min_today` and `<alias>_max_today` (°C), read like any other value of the equipment. They reset at local midnight and are absent until the first sample of the day.
+
+- **Which bindings.** On a `weather` station, every temperature binding (spec 134). On any other equipment, the reading aliased `temperature` (category `temperature`, the one the zone averages — a setpoint never counts) and any `temperature_outdoor` binding.
+- **`lastUpdated`** is the instant of the last sample taken into the envelope, even one that did not move it: a minimum reached at 06:30 still reads fresh at 18:00 while the probe reports.
+- **Events.** Both entries are emitted as `equipment.data.changed` when the envelope moves (a sample inside it only refreshes `lastUpdated`). A recipe reacting to every change of a sensor should filter on the alias it watches.
+
 ## Shared Helpers
 
 Recipe packages reach shared utilities through `ctx.helpers` (the `RecipeHelpers` interface in `src/shared/types.ts`):
@@ -373,6 +412,8 @@ Recipe packages reach shared utilities through `ctx.helpers` (the `RecipeHelpers
 | `getSunlight()`                                                                | Sun-aware scheduling (spec 126) — see below    |
 | `getTariff()`                                                                  | Tariff-aware scheduling (spec 138) — see below |
 | `energy.claimCapacity()` / `energy.getCapacityState()`                         | Solar-surplus claims (spec 140) — see below    |
+| `equipmentData.publish()`                                                      | Data on an equipment (spec 214) — see above    |
+| `history?.query()`                                                             | Read Sowel's history (spec 211) — see below    |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` returns the current sun times (`"HH:MM"`, spec 023 offsets applied). Pair it with the `sunlight.changed` event to re-sync across days; fields are `null` when sun times are not yet computed or no home coordinates are configured.
 
@@ -483,6 +524,30 @@ Rules for authors (spec 140, enforced socially and audited by the core):
    `invalid-modulation`. A decrease the load does not follow is journaled
    `budget-not-honored`.
 
+### `history` — reading history (spec 211)
+
+`ctx.helpers.history.query({ equipmentId, alias, from, to?, aggregation })` reads the hourly or daily buckets Sowel already keeps in InfluxDB, read-only. Use it rather than sampling a value yourself: the figures are the ones the charts show.
+
+```typescript
+if (ctx.helpers.history) {
+  const { points, ok } = await ctx.helpers.history.query({
+    equipmentId: meterId,
+    alias: "energy",
+    from: "-25h", // ISO-8601 or relative: -30m, -24h, -7d
+    aggregation: "1h", // "1h" or "1d" only
+  });
+  // points: [{ time: "2026-11-17T14:00:00.000Z", value: 320 }, ...]
+}
+```
+
+- **Optional.** Absent on an older core and when InfluxDB is not wired: test `ctx.helpers.history` first.
+- **Complete periods only, stamped at their start** (UTC ISO-8601), whatever the category: the point `14:00` is the hour 14:00–15:00. The running hour or day is never returned, so `-24h` at 15:42 yields 23 hours (16:00 yesterday to 14:00 today); ask `-25h` for 24.
+- **Days.** `1d` cuts rain at local midnight, energy and continuous measures (temperature…) at UTC midnight. For energy by local day, read `1h` and keep the hours you want. For today's extremes, read `<alias>_min_today` / `_max_today`: `1d` history holds complete days only.
+- **Sparse.** A period without samples has no point; nothing is zero-filled. Continuous measures also carry `min` and `max`.
+- **Bounds.** The window is clamped to the last 7 days. `alias` must be a data binding or a computed data entry of the equipment; a boolean or enum binding, an unknown alias or an invalid window answer `{ points: [], ok: true }` without querying.
+- **`ok: false`** means InfluxDB is not configured, unreachable or failed, or the rate limit was reached — not that there is nothing to read. Partial results are never returned.
+- **Rate limit.** At most 10 calls reaching InfluxDB per rolling minute per instance; beyond, the call answers `{ points: [], ok: false }` (it never rejects). One call per series per closed hour is far under the limit. On `ok: false`, keep what you already read and resume at the next tick.
+
 ## Event Bus Events
 
 Key events recipes typically subscribe to:
@@ -510,6 +575,7 @@ The live catalog is `plugins/registry.json` in the Sowel repo (every `"type": "r
 | ------------------------------ | ----------------------------------------------------------------------- |
 | `sowel-recipe-schedule-on-off` | Timers, sun-aware boundaries (`getSunlight`), select slots, i18n, tests |
 | `sowel-recipe-state-watch`     | Generic data-key watch raising alarms                                   |
+| `sowel-recipe-appliance-cycle` | Publishes a value on an equipment (spec 214), raises its own alarm      |
 | `sowel-recipe-motion-light`    | Classic sensor to actuator pattern with timeout                         |
 
 ## Checklist

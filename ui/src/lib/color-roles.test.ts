@@ -112,8 +112,9 @@ const PAIRS: [string, string, number][] = [
   ["on-status", "error", TEXT],
   ["heat", "heat/10", TEXT],
   ["primary", "primary/10", TEXT],
-  // Spec 208 — the selected tab of the bottom bar: its label and icon on their pill.
-  ["primary", "primary/15", TEXT],
+  // Spec 208, amended by #1264 — the selected tab of the bottom bar: its label
+  // and icon on their grey pill.
+  ["primary", "text/8", TEXT],
   ["text-secondary", "border-light-solid", TEXT],
   // Off switch: its outline on the surface, its thumb on its track.
   ["text-tertiary", "surface", GRAPHIC],

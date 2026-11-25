@@ -2,7 +2,15 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Flame, Snowflake, Loader2 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
-import { findOrderByCategory, relayStateOn } from "./bindingUtils";
+import {
+  PILOT_WIRE_ORDER_CATEGORY,
+  isHeaterRunning,
+  resolveHeaterState,
+  type HeaterState,
+  type PilotWireMode,
+} from "../../lib/heater-contract";
+import { heaterModeKey, heaterModeTint } from "./heaterMode";
+import { findOrderByCategory } from "./bindingUtils";
 
 interface HeaterControlProps {
   equipment: EquipmentWithDetails;
@@ -15,28 +23,148 @@ interface HeaterControlProps {
   withReadings?: boolean;
 }
 
-/** Whether the pilot-wire relay is on — which means éco (fil pilote convention). */
-function heaterRelayOn(equipment: EquipmentWithDetails): boolean {
-  return relayStateOn(equipment.dataBindings);
+function stateOf(equipment: EquipmentWithDetails): HeaterState {
+  return resolveHeaterState(equipment.dataBindings, equipment.orderBindings);
 }
 
-/** The Confort / Éco pill, as the compact rows show it. */
+/** The mode pill, as the compact rows show it. */
 export function HeaterModeBadge({ equipment }: { equipment: EquipmentWithDetails }) {
   const { t } = useTranslation();
-  const isComfort = !heaterRelayOn(equipment);
+  const state = stateOf(equipment);
   return (
     <span
-      className={`
-        text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
-        ${isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"}
-      `}
+      className={`text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${heaterModeTint(state)}`}
     >
-      {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
+      {t(heaterModeKey(state.mode))}
     </span>
   );
 }
 
-export function HeaterControl({
+/** Sends a pilot-wire mode under the alias of the bound order, one at a time. */
+function usePilotWireOrder(
+  equipment: EquipmentWithDetails,
+  onExecuteOrder: HeaterControlProps["onExecuteOrder"],
+) {
+  const [pending, setPending] = useState<PilotWireMode | null>(null);
+  const alias = equipment.orderBindings.find(
+    (o) => o.category === PILOT_WIRE_ORDER_CATEGORY,
+  )?.alias;
+  const send = async (mode: PilotWireMode) => {
+    if (pending || !alias || !equipment.enabled) return;
+    setPending(mode);
+    try {
+      await onExecuteOrder(alias, mode);
+    } finally {
+      setPending(null);
+    }
+  };
+  return { pending, send };
+}
+
+/** One button per mode the module accepts (spec 217). */
+export function PilotWireModes({
+  equipment,
+  onExecuteOrder,
+}: Pick<HeaterControlProps, "equipment" | "onExecuteOrder">) {
+  const { t } = useTranslation();
+  const state = stateOf(equipment);
+  const { pending, send } = usePilotWireOrder(equipment, onExecuteOrder);
+  if (state.wiring !== "pilot" || state.modes.length === 0 || !equipment.enabled) return null;
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      {state.modes.map((mode) => {
+        const active = state.mode === mode;
+        return (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={active}
+            disabled={pending !== null}
+            onClick={() => void send(mode)}
+            className={`min-h-11 px-3 py-2 flex items-center justify-center gap-2 rounded-sm text-small font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+              active
+                ? `${heaterModeTint(state)} border-current`
+                : "border-border bg-surface text-text-secondary hover:border-primary/40"
+            }`}
+          >
+            {pending === mode && <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />}
+            {t(heaterModeKey(mode))}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PilotWireSelect({
+  equipment,
+  onExecuteOrder,
+}: Pick<HeaterControlProps, "equipment" | "onExecuteOrder">) {
+  const { t } = useTranslation();
+  const state = stateOf(equipment);
+  const { pending, send } = usePilotWireOrder(equipment, onExecuteOrder);
+  if (state.wiring !== "pilot" || state.modes.length === 0 || !equipment.enabled) return null;
+  // A mode the module reports but does not accept is still what it is doing.
+  const listed = state.mode !== null && state.modes.includes(state.mode);
+  return (
+    <select
+      aria-label={t("controls.heater.mode")}
+      value={state.mode ?? ""}
+      disabled={pending !== null}
+      onChange={(e) => {
+        const mode = state.modes.find((m) => m === e.target.value);
+        if (mode) void send(mode);
+      }}
+      className="px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text disabled:opacity-50"
+    >
+      {!listed && (
+        <option value={state.mode ?? ""} disabled>
+          {t(heaterModeKey(state.mode))}
+        </option>
+      )}
+      {state.modes.map((mode) => (
+        <option key={mode} value={mode}>
+          {t(heaterModeKey(mode))}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function HeaterControl(props: HeaterControlProps) {
+  const { equipment, onExecuteOrder, compact, withReadings = true } = props;
+  const { t } = useTranslation();
+  const state = stateOf(equipment);
+  if (state.wiring === "relay") return <RelayHeaterControl {...props} />;
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        {withReadings && <HeaterModeBadge equipment={equipment} />}
+        <PilotWireSelect equipment={equipment} onExecuteOrder={onExecuteOrder} />
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div
+          className={`w-10 h-10 rounded-md flex items-center justify-center ${heaterModeTint(state)}`}
+        >
+          {isHeaterRunning(state) ? (
+            <Flame size={22} strokeWidth={1.5} />
+          ) : (
+            <Snowflake size={22} strokeWidth={1.5} />
+          )}
+        </div>
+        <div className="text-lead font-medium text-text">{t(heaterModeKey(state.mode))}</div>
+      </div>
+      <PilotWireModes equipment={equipment} onExecuteOrder={onExecuteOrder} />
+    </div>
+  );
+}
+
+function RelayHeaterControl({
   equipment,
   onExecuteOrder,
   compact,
@@ -45,7 +173,7 @@ export function HeaterControl({
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
 
-  const isOn = heaterRelayOn(equipment);
+  const isOn = stateOf(equipment).mode === "eco";
 
   // Fil pilote convention: relay ON = éco, relay OFF = confort
   const isComfort = !isOn;

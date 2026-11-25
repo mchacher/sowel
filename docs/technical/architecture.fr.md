@@ -369,6 +369,7 @@ Chaque changement est enregistré en entier ; un tick de 30 s ferme les tranches
 - **Middleware d'auth** : tente d'abord le décodage JWT, puis le lookup de token d'API.
 - **Rôles** : `admin` > `standard` > `viewer` (permissions hiérarchiques).
 - **Setup au premier démarrage** : `POST /api/v1/auth/setup` crée le premier utilisateur admin.
+- **Révocation des sessions** (issue #1305) : `verifyAccessToken` relit le compte à chaque requête HTTP, donc un compte désactivé ou supprimé est refusé et c'est le rôle enregistré qui s'applique, pas celui signé dans le token. Un changement de mot de passe supprime tous les refresh tokens du compte, incrémente `users.token_version`, porté par chaque token d'accès dans le claim `tv`, pour que les tokens d'accès émis avant soient refusés, et remet une nouvelle paire à l'appelant. Un changement de rôle, une désactivation ou une réinitialisation MFA par un admin supprime les refresh tokens de l'utilisateur. Les WebSockets ne sont vérifiés qu'à la connexion.
 
 ---
 
@@ -700,20 +701,21 @@ Voir la spec 061 sur [github.com/mchacher/sowel/tree/main/specs/061-timezone-fro
 
 Tous les réglages sont optionnels avec des valeurs par défaut raisonnables, Sowel tourne sans configuration prête à l'emploi. Surchargez via `.env` au besoin :
 
-| Variable          | Défaut                         | Notes                                                                                      |
-| ----------------- | ------------------------------ | ------------------------------------------------------------------------------------------ |
-| `SQLITE_PATH`     | `./data/sowel.db`              | Chemin de la base SQLite                                                                   |
-| `API_PORT`        | `3000`                         | Port du serveur HTTP                                                                       |
-| `API_HOST`        | `0.0.0.0`                      | Adresse de bind                                                                            |
-| `JWT_SECRET`      | auto-généré                    | Persisté dans `data/.jwt-secret` au premier lancement                                      |
-| `JWT_ACCESS_TTL`  | `900`                          | TTL de l'access token en secondes (15 min)                                                 |
-| `JWT_REFRESH_TTL` | `2592000`                      | TTL du refresh token en secondes (30 jours)                                                |
-| `LOG_LEVEL`       | `info`                         | Niveau de log pino                                                                         |
-| `CORS_ORIGINS`    | `*`                            | Origines autorisées séparées par des virgules                                              |
-| `INFLUX_URL`      | `http://localhost:8086`        | URL InfluxDB 2.x                                                                           |
-| `INFLUX_TOKEN`    | auto-généré                    | Persisté dans `data/.influx-token` au premier lancement                                    |
-| `INFLUX_ORG`      | `sowel`                        | Organisation InfluxDB                                                                      |
-| `INFLUX_BUCKET`   | `sowel`                        | Bucket principal InfluxDB                                                                  |
-| `TZ`              | défaut système (UTC en Docker) | Fuseau IANA. À fixer explicitement dans docker-compose pour fiabiliser la logique horaire. |
+| Variable                | Défaut                         | Notes                                                                                       |
+| ----------------------- | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `SQLITE_PATH`           | `./data/sowel.db`              | Chemin de la base SQLite                                                                    |
+| `API_PORT`              | `3000`                         | Port du serveur HTTP                                                                        |
+| `API_HOST`              | `0.0.0.0`                      | Adresse de bind                                                                             |
+| `JWT_SECRET`            | auto-généré                    | Persisté dans `data/.jwt-secret` au premier lancement                                       |
+| `JWT_ACCESS_TTL`        | `900`                          | TTL de l'access token en secondes (15 min)                                                  |
+| `JWT_REFRESH_TTL`       | `2592000`                      | TTL du refresh token en secondes (30 jours)                                                 |
+| `LOG_LEVEL`             | `info`                         | Niveau de log pino                                                                          |
+| `CORS_ORIGINS`          | `*`                            | Origines autorisées séparées par des virgules                                               |
+| `SOWEL_TRUSTED_PROXIES` | (vide)                         | Adresses de proxy (IP ou CIDR) dont `X-Forwarded-For` est cru. Voir le guide de déploiement |
+| `INFLUX_URL`            | `http://localhost:8086`        | URL InfluxDB 2.x                                                                            |
+| `INFLUX_TOKEN`          | auto-généré                    | Persisté dans `data/.influx-token` au premier lancement                                     |
+| `INFLUX_ORG`            | `sowel`                        | Organisation InfluxDB                                                                       |
+| `INFLUX_BUCKET`         | `sowel`                        | Bucket principal InfluxDB                                                                   |
+| `TZ`                    | défaut système (UTC en Docker) | Fuseau IANA. À fixer explicitement dans docker-compose pour fiabiliser la logique horaire.  |
 
 Les réglages d'intégration (MQTT, identifiants cloud, intervalles de polling) sont configurés depuis l'UI, pas depuis `.env`.

@@ -11,6 +11,56 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.89.x: Security hardening
+
+### v1.89.0 — 2026-11-22 { #v1-89-0 }
+
+A security release. Update every instance, first of all one reachable from the internet. The API check now applies however a request spells its path, sessions end when an account changes, an instance behind a tunnel sees its real clients, and an order can no longer carry device settings.
+
+**After the update:**
+
+- **Behind a reverse proxy or a tunnel** (Cloudflare Tunnel, Caddy, nginx), set `SOWEL_TRUSTED_PROXIES` to the address the proxy connects from, usually the Docker gateway `172.18.0.1` when `cloudflared` runs on the host. Without it, login limits stay shared by every remote client. See [Deployment](technical/deployment.md#behind-a-reverse-proxy-or-a-tunnel).
+- **Changing a password now logs out every other browser** signed in to that account. API tokens are not affected: review them in Settings → Account.
+- **A migration adds `users.token_version`.** Nobody is logged out by the upgrade.
+
+- Fix (auth): **the authentication check applies to every spelling of an API path** (#1301). A path written with percent-encoded characters could reach some protected endpoints without a login. The check now decides on the route the server actually matched. An instance behind Cloudflare can also turn on URL normalization to origin.
+- Fix (api): **login and MFA limits see the real client behind a tunnel** (#1302, #1304). Every request through a tunnel came from the same local address, so ten failed logins a minute from anyone locked out everyone, and the audit log recorded the proxy. The new `SOWEL_TRUSTED_PROXIES` (IPs or CIDRs, empty by default) lists the proxies whose `X-Forwarded-For` is believed; nobody else can choose their address. An invalid entry stops startup with a message that names the setting.
+- Fix (auth): **sessions end when the account changes** (#1305, #1306). A password change ends every session of the account at once and hands the browser that made it a fresh one. A disable, a role change or an admin MFA reset ends that user's sessions. Every request re-reads the account, so a disabled account is refused and a demotion applies on the next request. `PUT /api/v1/me/password` now returns the new token pair.
+- Fix (equipments): **an order value can no longer write device attributes** (#1310, #1311). Unless an order is typed `json`, its value is a string, number, boolean or empty, or, on an on/off order, the timed composite `{ <order key>, on_time?, off_wait_time? }` used by timed watering. Anything else answers `400` and nothing reaches the device. A timed action's revert is checked when it is armed. A mode, button or calendar action configured with an object value of another shape is now refused; none is known.
+- Fix (ui): the phone tab bar is tighter, the icon closer to its label (#1290, #1293), and the selected tab keeps its label inside its bubble (#1294, #1295).
+- Docs: the manual is a plain manual again, themed like the showcase site, user guide first (spec 209, #1287, #1288, #1289, #1292, #1296, #1297, #1298); the README links the showcase site (#1299); Netatmo API review notes (#1300, #1303).
+
+---
+
+## 1.88.x: A new logo, and recipes that publish data
+
+### v1.88.1 — 2026-11-21 { #v1-88-1 }
+
+A fresh install now sets up its long-term energy history. The README and the docs screenshots were redone.
+
+**After the update:** an instance installed with the one-command installer before this version may lack the hourly and daily buckets. Restart it once and they are created.
+
+- Fix (core): **Sowel waits for InfluxDB before creating its buckets and downsampling tasks** (#1284, #1285). On a first `docker compose up`, Sowel started a few seconds before InfluxDB answered, found no organisation and skipped the whole setup without trying again. A new install had no hourly, daily, energy or rain bucket and no downsampling task until its first restart. The setup now waits for InfluxDB, up to 120 seconds, then runs; if InfluxDB never answers, it logs one warning and startup is not blocked.
+- Docs: the README is a storefront with a live-data hero (#1276, #1282), the energy, arbiter and devices screenshots are retaken (#1278) and the French navigation labels are all in French (#1279).
+- Maintenance (registry): appliance-cycle 0.1.0 added (#1283).
+
+### v1.88.0 — 2026-11-21 { #v1-88-0 }
+
+Sowel has a new logo: one drawing used everywhere (app, splash, icons, docs), and the name written « sowel » in lowercase. A recipe can now publish a value on an equipment, as if a device had reported it. On a phone, the tab bar floats as a pill over the page.
+
+**After the update:** an installed app keeps its old home-screen icon until you add it to the home screen again.
+
+- Feat (ui): **one logo drawing in two weights** (spec 210, #1260). The mark existed as three slightly different drawings and the name as `SOWEL`, `Sowel` or nothing. It is now one drawing, with a tighter face, in a master weight from 32 px and a thicker one below. The wordmark is `sowel` in Nunito 700, the desktop sidebar included. Splash, favicons, app icons and the docs landing follow.
+- Feat (recipes): **a recipe publishes data on an equipment** (spec 214, #1273). A recipe declares `publishes` on an `equipment` slot and calls `ctx.helpers.equipmentData.publish(equipmentId, alias, value)`. The value shows as a `virtual:recipe:` binding of the equipment: card, panel, history, binding pickers and other recipes read it like a device binding. An alias already bound to a device, derived by the core or published by another instance is refused with a `400`. Appliance cards now take on and off from the power first: a washer on a metering plug no longer shows Off mid-cycle. See [Recipe development](technical/recipe-development.md).
+- Feat (ui): **the phone tab bar floats as a pill** (#1264, #1277). Below 1024 px the bottom bar becomes a rounded, translucent pill above the content, clear of the iPhone home indicator. The selected tab sits on a grey pill. The page keeps enough space at the bottom for its last line, and the install banner and restart toast sit above the pill.
+- Feat (energy): **the arbiter counts down a claim's engage hold** (#1262, #1263). A covered claim waiting out its hold shows the time left (`m:ss`) and a bar of the hold already spent in the arbitration roster, and is granted when the hold ends rather than at the next tick. A meter outage restarts the hold. `loads[].engageAtIso` and `engageHoldS` in `GET /api/v1/energy/arbiter`.
+- Fix (ui): **the integration Connect button names the plugin and the missing field** (spec 212, #1266). It read « Connect with Samsung » for every plugin; it now reads « Connect to <plugin> ». Start keeps its name, the empty required fields are listed under the buttons and marked on the form, and Connect saves unsaved edits first.
+- Feat (ui): a washing machine among the recipe icons, for the upcoming appliance-cycle recipe (#1274).
+- Fix (docs): the install command on the docs home page points at the script that exists (#1258).
+- Maintenance (deps): the weekly library and toolchain updates (#1267, #1268, #1269, #1270).
+
+---
+
 ## 1.87.x: Families that colour the house
 
 ### v1.87.0 — 2026-11-14 { #v1-87-0 }

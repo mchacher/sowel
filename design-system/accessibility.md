@@ -33,7 +33,7 @@ The system targets **WCAG 2.2 AA** as a hard minimum, **AAA** wherever it costs 
 | `.mode-row__apply`                            | ~28 high      | ❌                       | Pad row hit area                                  |
 | `.modal__close`                               | 32 × 32       | ❌                       | Acceptable in modal head; the X is in a calm zone |
 | `.topbar__chip`                               | 32 high       | ❌                       | Borderline; production may keep at 32             |
-| `.mob__tab`                                   | 56 × ~76      | ✅                       | Mobile tab bar items pass 44×44                   |
+| `.mob__tab`                                   | ~70 × 52      | ✅                       | Mobile tab bar items pass 44×44                   |
 | `.sb__item`                                   | ~30 high      | ❌                       | **Desktop only, mouse-driven**: OK                |
 | `.mob__action-seg button`                     | min-height 44 | ✅                       | Already meets target                              |
 

@@ -301,6 +301,16 @@ export class TimedActionManager {
     // `[500, 1000]` ladder armed a window that expired half a second later —
     // the gate opening and closing itself, with nothing to alarm on.
     if ((input.durationStepsMs ?? []).some(outOfRange)) throw rangeError();
+    // Issue #1310 — the revert is stored now and sent at the deadline. Check
+    // both values here: a revert the order would refuse later must not be
+    // armed, or the equipment is left where the action put it.
+    for (const v of [input.value, input.revertValue]) {
+      try {
+        this.equipmentManager.validateOrderValue(equipmentId, input.alias, v);
+      } catch (err) {
+        throw new TimedActionError(err instanceof Error ? err.message : String(err), 400);
+      }
+    }
     // FR-9b. The first draft refused an action and a revert carrying the same
     // value, reasoning that the deadline would send what is already there. True
     // of a dedicated ON/OFF pair, false of the hardware this feature exists for:

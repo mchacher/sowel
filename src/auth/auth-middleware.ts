@@ -195,14 +195,22 @@ export function registerAuthMiddleware(
   const { authService, userManager } = deps;
 
   app.addHook("onRequest", async (request, reply) => {
-    // Skip auth for static UI files, public routes and WebSocket upgrade
-    if (!request.url.startsWith("/api/")) return;
-    if (isPublicRoute(request.url)) return;
-    if (request.url.startsWith("/ws")) return; // WS auth handled separately
+    // Decide on what the router matched, never on the raw request target.
+    // find-my-way percent-decodes before matching, so a raw `/%61pi/v1/...`
+    // reaches an `/api/v1/...` handler while failing `startsWith("/api/")`.
+    // The matched route template is the ground truth; when nothing matched
+    // (404), fall back to the path decoded the same way the router does.
+    // `/ws` is not under `/api/` and authenticates itself on the handshake.
+    const path = decodedPath(request);
+    const routePath = request.routeOptions?.url ?? path;
+
+    // Skip auth for static UI files and public routes
+    if (!routePath.startsWith("/api/") && !path.startsWith("/api/")) return;
+    if (isPublicRoute(routePath)) return;
 
     // Setup mode: if no users exist, only setup endpoint is allowed
     if (!userManager.hasUsers()) {
-      if (request.url !== "/api/v1/auth/setup") {
+      if (routePath !== "/api/v1/auth/setup") {
         return reply.code(403).send({ error: "Setup required", setupRequired: true });
       }
       return;
@@ -226,9 +234,7 @@ export function registerAuthMiddleware(
 
     // Role gate (spec 131): a non-admin may only run the allowlisted usage
     // mutations (actuate + own account); every other write is admin-only.
-    if (
-      isMutationDeniedForStandard(request.method, request.url.split("?")[0], request.auth?.role)
-    ) {
+    if (isMutationDeniedForStandard(request.method, path, request.auth?.role)) {
       return reply.code(403).send({ error: "Admin access required" });
     }
   });

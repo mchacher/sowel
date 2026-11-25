@@ -4,338 +4,52 @@ hide:
   - toc
 ---
 
-<div class="sowel-flip">
-<div class="sowel-flip__pin">
-<div class="sowel-flip__track">
+# Sowel manual
 
-<!-- =========================================================== -->
-<!-- Page 1 — Hero                                                -->
-<!-- =========================================================== -->
-<div class="sowel-flip__page sowel-flip__page--hero">
+Sowel is an open-source home automation engine. It groups your devices into equipments and zones, and runs recipes on top of them. This manual covers how to install and use Sowel, how the energy features work, and how the engine is built.
 
-<div class="sowel-hero sowel-hero--split">
-<div class="sowel-hero__copy">
+## Start here
 
-<div class="sowel-hero__brand">
-  <svg class="sowel-logo sowel-logo--sm" xmlns="http://www.w3.org/2000/svg" viewBox="20 10 160 165" aria-hidden="true">
-    <path class="house"     d="M100 30 L160 90 Q165 95 160 100 L160 150 Q160 158 152 158 L48 158 Q40 158 40 150 L40 100 Q35 95 40 90 Z"/>
-    <path class="smile"     d="M72 114 Q100 142 128 114"/>
-    <path class="left-eye"  d="M75 94 Q81 84 87 94"/>
-    <path class="right-eye" d="M113 94 Q119 84 125 94"/>
-  </svg>
-  <span class="sowel-hero__wordmark">sowel</span>
-</div>
+<!-- prettier-ignore-start -->
 
-<p class="sowel-hero__eyebrow">A different way to automate your home</p>
+<div class="grid cards sowel-primary" markdown>
 
-<h1 class="sowel-hero__tagline">Don't program your home.<em>Apply recipes to it.</em></h1>
+-   :material-rocket-launch-outline: **[Getting started](user/getting-started.md)**
 
-<p class="sowel-hero__lead">Sowel ships proven recipes for what every home actually needs: Motion Light, Sunset Shutters, Presence Heating, Solar Charging, Auto Watering. Drop one on a room, set a few values, you're done.</p>
+    Install Sowel, create the first account and add your first devices.
 
-<p class="sowel-hero__ctas">
-  <a class="md-button md-button--primary" href="user/getting-started/">Get started <span class="md-icon md-icon--arrow">→</span></a>
-  <a class="md-button" href="technical/">Read the developer guide</a>
-</p>
+-   :material-book-open-variant-outline: **[User guide](user/index.md)**
 
-</div>
-<div class="sowel-hero__mock-wrap">
-
-<div class="sowel-mock" aria-hidden="true">
-  <div class="sowel-mock__title">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    <span class="sowel-mock__zone">Living Room</span>
-    <span class="sowel-mock__mode">Evening light</span>
-  </div>
-  <div class="sowel-mock__metrics">
-    <div class="sowel-mock__metric"><div class="sowel-mock__metric-label">Lux</div><div class="sowel-mock__metric-value">334</div></div>
-    <div class="sowel-mock__metric sowel-mock__metric--motion"><div class="sowel-mock__metric-label">Motion</div><div class="sowel-mock__metric-value">Calm</div></div>
-    <div class="sowel-mock__metric sowel-mock__metric--lights"><div class="sowel-mock__metric-label">Lights</div><div class="sowel-mock__metric-value">1/3</div></div>
-    <div class="sowel-mock__metric"><div class="sowel-mock__metric-label">Shutters</div><div class="sowel-mock__metric-value">0/3</div></div>
-  </div>
-  <div class="sowel-mock__cards">
-    <div class="sowel-mock__card sowel-mock__card--on">
-      <span class="sowel-mock__card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg></span>
-      <span class="sowel-mock__card-title">Wall lights x2</span>
-      <span class="sowel-mock__card-state sowel-mock__card-state--dim">Dim 20%</span>
-    </div>
-    <div class="sowel-mock__card sowel-mock__card--shutter">
-      <span class="sowel-mock__card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg></span>
-      <span class="sowel-mock__card-title">Shutters South</span>
-      <span class="sowel-mock__card-state sowel-mock__card-state--closed">Closed</span>
-    </div>
-  </div>
-  <div class="sowel-mock__recipe">
-    <b>● Motion Light (Dimmable)</b> · 20 % on motion · evening time slot
-  </div>
-</div>
-
-</div>
-</div>
+    Devices, equipments, zones, modes, recipes, plugins and remote access.
 
 </div>
 
-<!-- =========================================================== -->
-<!-- Page 2 — Your home at your fingertips                        -->
-<!-- =========================================================== -->
-<div class="sowel-flip__page">
-<div class="sowel-section sowel-section--split sowel-section--devices">
-<div class="sowel-section__copy">
+<!-- prettier-ignore-end -->
 
-<p class="sowel-eyebrow">Your home at your fingertips.</p>
+## Going further
 
-<p class="sowel-paragraph">A single interface for the whole house: zones, equipments, modes, recipes, energy. Open it from your laptop in the kitchen, your phone on the couch, your tablet at the office.</p>
+<!-- prettier-ignore-start -->
 
-<p class="sowel-subtitle">Same data, same buttons, same recipes. Just the device you have nearby.</p>
+<div class="grid cards" markdown>
 
-</div>
-<div class="sowel-section__visual sowel-patchwork">
-  <div class="sowel-laptop sowel-patchwork__desktop">
-    <div class="sowel-laptop__screen">
-      <img src="/assets/landing/sejour-desktop.png" alt="Sowel desktop view of a Living Room zone showing lights, shutters and sensors" />
-    </div>
-    <div class="sowel-laptop__base"></div>
-  </div>
-  <div class="sowel-phone sowel-patchwork__mobile sowel-patchwork__mobile--1">
-    <div class="sowel-phone__screen">
-      <div class="sowel-phone__status" aria-hidden="true">
-        <span class="sowel-phone__time">9:41</span>
-        <span class="sowel-phone__icons">
-          <svg width="14" height="9" viewBox="0 0 14 9" fill="currentColor"><rect x="0" y="6" width="2" height="3" rx="0.5"/><rect x="3.5" y="4" width="2" height="5" rx="0.5"/><rect x="7" y="2" width="2" height="7" rx="0.5"/><rect x="10.5" y="0" width="2" height="9" rx="0.5"/></svg>
-          <svg width="11" height="9" viewBox="0 0 11 9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M0.8 2.4 a 7 7 0 0 1 9.4 0"/><path d="M2.6 4.4 a 4 4 0 0 1 5.8 0"/><circle cx="5.5" cy="7" r="0.7" fill="currentColor" stroke="none"/></svg>
-          <svg width="20" height="9" viewBox="0 0 20 9" fill="none"><rect x="0.5" y="0.5" width="17" height="8" rx="2" stroke="currentColor"/><rect x="18.4" y="3" width="1" height="3" rx="0.4" fill="currentColor"/><rect x="2" y="2" width="11" height="5" rx="1" fill="currentColor"/></svg>
-        </span>
-      </div>
-      <img src="/assets/landing/energy-mobile.png" alt="Sowel energy live view on mobile" />
-    </div>
-  </div>
-  <div class="sowel-phone sowel-patchwork__mobile sowel-patchwork__mobile--2">
-    <div class="sowel-phone__screen">
-      <div class="sowel-phone__status" aria-hidden="true">
-        <span class="sowel-phone__time">9:41</span>
-        <span class="sowel-phone__icons">
-          <svg width="14" height="9" viewBox="0 0 14 9" fill="currentColor"><rect x="0" y="6" width="2" height="3" rx="0.5"/><rect x="3.5" y="4" width="2" height="5" rx="0.5"/><rect x="7" y="2" width="2" height="7" rx="0.5"/><rect x="10.5" y="0" width="2" height="9" rx="0.5"/></svg>
-          <svg width="11" height="9" viewBox="0 0 11 9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M0.8 2.4 a 7 7 0 0 1 9.4 0"/><path d="M2.6 4.4 a 4 4 0 0 1 5.8 0"/><circle cx="5.5" cy="7" r="0.7" fill="currentColor" stroke="none"/></svg>
-          <svg width="20" height="9" viewBox="0 0 20 9" fill="none"><rect x="0.5" y="0.5" width="17" height="8" rx="2" stroke="currentColor"/><rect x="18.4" y="3" width="1" height="3" rx="0.4" fill="currentColor"/><rect x="2" y="2" width="11" height="5" rx="1" fill="currentColor"/></svg>
-        </span>
-      </div>
-      <img src="/assets/landing/dashboard-mobile.png" alt="Sowel dashboard on mobile" />
-    </div>
-  </div>
-</div>
-</div>
-</div>
+-   **[Energy](deep-dives/energy-tour.md)**
 
-<!-- =========================================================== -->
-<!-- Page 3 — A different way                                     -->
-<!-- =========================================================== -->
-<div class="sowel-flip__page">
-<div class="sowel-section sowel-section--split">
-<div class="sowel-section__copy">
+    Where the energy goes, the surplus arbiter and the monitoring of the panels.
 
-<p class="sowel-eyebrow">A different way to automate your home</p>
+-   **[Release notes](release-notes.md)**
 
-<p class="sowel-paragraph">Most home automation tools turn you into a part-time developer: YAML files, scripts, flows, conditions, edge cases. The result is fragile spaghetti that only one person in the household can debug.</p>
+    What changed in each version.
 
-<p class="sowel-paragraph"><strong>Sowel takes the opposite path.</strong> Pick a recipe (<em>Motion Light</em>, <em>Presence Thermostat</em>, <em>Sunset Shutters</em>) and apply it to a zone. You configure a few obvious settings (a duration, a temperature, a time window), not a programming language.</p>
+-   **[Technical guide](technical/index.md)**
 
-<p class="sowel-subtitle">The best automation is the one you forget about. Your home just works.</p>
+    For developers: architecture, API, data model, and how to write a plugin or a recipe.
 
-</div>
-<div class="sowel-section__visual">
+-   **[Articles](https://sowel.org/en/articles/)**
 
-<div class="sowel-yaml-mock" aria-hidden="true">
-  <div class="sowel-yaml-mock__bar">
-    <span></span><span></span><span></span>
-    <em>automation.yaml</em>
-  </div>
-  <pre class="sowel-yaml-mock__code"><span class="k">automation:</span>
-  - <span class="k">alias:</span> <span class="s">"Living-room motion"</span>
-    <span class="k">trigger:</span>
-      - <span class="k">platform:</span> state
-        <span class="k">entity_id:</span> binary_sensor.lr_pir
-        <span class="k">to:</span> <span class="s">"on"</span>
-    <span class="k">condition:</span>
-      - <span class="k">condition:</span> numeric_state
-        <span class="k">entity_id:</span> sensor.lr_lux
-        <span class="k">below:</span> 80
-    <span class="k">action:</span>
-      - <span class="k">service:</span> light.turn_on
-        <span class="k">data:</span> { <span class="k">brightness_pct:</span> 60 }</pre>
-</div>
-
-<div class="sowel-vs"><span>vs.</span></div>
-
-<div class="sowel-recipe-mock" aria-hidden="true">
-  <div class="sowel-recipe-mock__head">
-    <span class="sowel-recipe-mock__dot"></span>
-    <div>
-      <strong>Motion Light</strong>
-      <small>applied to Living Room</small>
-    </div>
-    <span class="sowel-recipe-mock__badge">Active</span>
-  </div>
-  <div class="sowel-recipe-mock__rows">
-    <div class="sowel-recipe-mock__row"><span>Brightness</span><kbd>60 %</kbd></div>
-    <div class="sowel-recipe-mock__row"><span>Hold time</span><kbd>5 min</kbd></div>
-    <div class="sowel-recipe-mock__row"><span>Lux threshold</span><kbd>80</kbd></div>
-  </div>
-</div>
-
-</div>
-</div>
-</div>
-
-<!-- =========================================================== -->
-<!-- Page 4 — Five layers                                         -->
-<!-- =========================================================== -->
-<div class="sowel-flip__page">
-<div class="sowel-section">
-
-<div class="sowel-layers" data-active="1" markdown="0">
-
-<div class="sowel-layers__intro">
-<p class="sowel-eyebrow">Sowel thinks of your home in rooms and spaces, not in wires and rules.</p>
-<p class="sowel-paragraph">Five layers describe your house in the same words you'd use yourself. Tap a layer to see what it does.</p>
-</div>
-
-<ol class="sowel-layers__list">
-<li><button type="button" class="sowel-layer-pick" data-target="1" aria-selected="true"><span class="sowel-layer-pick__num">1</span><span class="sowel-layer-pick__body"><span class="sowel-layer-pick__title">Devices</span><span class="sowel-layer-pick__lead">What's on your network.</span></span></button></li>
-<li><button type="button" class="sowel-layer-pick" data-target="2" aria-selected="false"><span class="sowel-layer-pick__num">2</span><span class="sowel-layer-pick__body"><span class="sowel-layer-pick__title">Equipments</span><span class="sowel-layer-pick__lead">What's in your room.</span></span></button></li>
-<li><button type="button" class="sowel-layer-pick" data-target="3" aria-selected="false"><span class="sowel-layer-pick__num">3</span><span class="sowel-layer-pick__body"><span class="sowel-layer-pick__title">Zones</span><span class="sowel-layer-pick__lead">Your rooms and floors.</span></span></button></li>
-<li><button type="button" class="sowel-layer-pick" data-target="4" aria-selected="false"><span class="sowel-layer-pick__num">4</span><span class="sowel-layer-pick__body"><span class="sowel-layer-pick__title">Modes</span><span class="sowel-layer-pick__lead">The mood of the moment.</span></span></button></li>
-<li><button type="button" class="sowel-layer-pick" data-target="5" aria-selected="false"><span class="sowel-layer-pick__num">5</span><span class="sowel-layer-pick__body"><span class="sowel-layer-pick__title">Recipes</span><span class="sowel-layer-pick__lead">What runs on its own.</span></span></button></li>
-</ol>
-
-<div class="sowel-layers__detail">
-
-<div class="sowel-layer-detail is-active" data-id="1">
-<h3>Devices</h3>
-<p>Plug in an integration (Zigbee, Shelly, ...) and Sowel handles any home automation device: bulbs, motion sensors, switches. One data model, regardless of brand or protocol.</p>
-<p class="sowel-layer-detail__more"><a href="user/devices/">Read more →</a></p>
-</div>
-
-<div class="sowel-layer-detail" data-id="2">
-<h3>Equipments</h3>
-<p>One IKEA Zigbee dimmer becomes the "Kitchen Spots". You stop thinking about hardware, you think about usage.</p>
-<p class="sowel-layer-detail__more"><a href="user/equipments/">Read more →</a></p>
-</div>
-
-<div class="sowel-layer-detail" data-id="3">
-<h3>Zones</h3>
-<p>The Living Room, the Ground Floor, the whole house. Group them the way you'd describe them; Sowel rolls up the data (average temperature, lights on, motion detected).</p>
-<p class="sowel-layer-detail__more"><a href="user/zones/">Read more →</a></p>
-</div>
-
-<div class="sowel-layer-detail" data-id="4">
-<h3>Modes</h3>
-<p>Morning: shutters up, heating at 20. Evening: dim lights, alarm armed. A tap, a schedule, a calendar: the house follows.</p>
-<p class="sowel-layer-detail__more"><a href="user/modes/">Read more →</a></p>
-</div>
-
-<div class="sowel-layer-detail" data-id="5">
-<h3>Recipes</h3>
-<p>Apply a recipe to a room and everything just works.</p>
-<p class="sowel-layer-detail__more"><a href="user/recipes/">Read more →</a></p>
-</div>
+    The ideas behind Sowel, on the showcase site.
 
 </div>
 
-</div>
+<!-- prettier-ignore-end -->
 
-</div>
-</div>
-
-<!-- =========================================================== -->
-<!-- Page 5 — Deploy in minutes                                   -->
-<!-- =========================================================== -->
-<div class="sowel-flip__page">
-<div class="sowel-section sowel-section--feature">
-
-<p class="sowel-eyebrow">Deploy in minutes. Yours from day one.</p>
-
-<div class="sowel-terminal-mock" aria-hidden="true">
-  <div class="sowel-terminal-mock__bar">
-    <span></span><span></span><span></span>
-    <em>sowel · install</em>
-  </div>
-  <pre class="sowel-terminal-mock__code"><span class="prompt">$</span> curl -fsSL <span class="url">https://raw.githubusercontent.com/mchacher/sowel/main/scripts/install.sh</span> | sh
-<span class="ok">✓</span> Docker detected
-<span class="ok">✓</span> Pulling sowel:latest and influxdb:2.7…
-<span class="ok">✓</span> Volumes initialised, settings seeded
-<span class="ok">✓</span> Sowel is running on <span class="url">http://localhost:3000</span></pre>
-</div>
-
-<div class="sowel-pills">
-  <div class="sowel-pill">
-    <strong>Stays at home.</strong> No cloud, no telemetry, no third-party account. Your data lives on your hardware: a Raspberry Pi, an old PC, a Proxmox VM.
-  </div>
-  <div class="sowel-pill">
-    <strong>Plug in what you own.</strong> Zigbee, Panasonic, Netatmo, Shelly, Legrand, MQTT-anything. Install integrations like apps; skip what you don't need.
-  </div>
-  <div class="sowel-pill">
-    <strong>Self-updating.</strong> Plugins and the engine update from GitHub. No SSH, no fiddling, no 3 a.m. reboots.
-  </div>
-</div>
-
-</div>
-</div>
-
-<!-- =========================================================== -->
-<!-- Page 6 — Take a tour                                         -->
-<!-- =========================================================== -->
-<div class="sowel-flip__page">
-<div class="sowel-section sowel-section--split sowel-section--next">
-<div class="sowel-section__visual">
-
-<svg class="sowel-logo sowel-logo--xl" xmlns="http://www.w3.org/2000/svg" viewBox="20 10 160 165" aria-hidden="true">
-  <path class="house"     d="M100 30 L160 90 Q165 95 160 100 L160 150 Q160 158 152 158 L48 158 Q40 158 40 150 L40 100 Q35 95 40 90 Z"/>
-  <path class="smile"     d="M72 114 Q100 142 128 114"/>
-  <path class="left-eye"  d="M75 94 Q81 84 87 94"/>
-  <path class="right-eye" d="M113 94 Q119 84 125 94"/>
-</svg>
-
-</div>
-<div class="sowel-section__copy">
-
-<p class="sowel-eyebrow">Where to next?</p>
-
-<p class="sowel-paragraph">Sowel is open source under AGPL-3.0. Pick the door that fits.</p>
-
-<div class="sowel-cards sowel-cards--two">
-
-<div class="sowel-card">
-  <div class="sowel-card__icon">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-  </div>
-  <h3>For users</h3>
-  <p>Set up your home, configure equipments, and apply your first recipes.</p>
-  <p><a href="user/getting-started/">User guide →</a></p>
-</div>
-
-<div class="sowel-card">
-  <div class="sowel-card__icon">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/></svg>
-  </div>
-  <h3>For developers</h3>
-  <p>Architecture, plugin development, recipes, and the data model.</p>
-  <p><a href="technical/">Technical guide →</a></p>
-</div>
-
-<div class="sowel-card">
-  <div class="sowel-card__icon">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
-  </div>
-  <h3>In depth</h3>
-  <p>A guided tour of energy monitoring, how the surplus arbiter decides who gets the solar surplus, and how Sowel notices when the panels stop performing.</p>
-  <p><a href="deep-dives/energy-tour/">Where the energy goes →</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="deep-dives/surplus-arbiter/">The surplus arbiter →</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="deep-dives/pv-health/">Watching over the panels →</a></p>
-</div>
-
-</div>
-
-</div>
-</div>
-</div>
-
-</div>
-</div>
-</div>
+The showcase site, [sowel.org](https://sowel.org/en/), shows what Sowel is, in pictures and with a short film. The source code and the issue tracker are on [GitHub](https://github.com/mchacher/sowel).

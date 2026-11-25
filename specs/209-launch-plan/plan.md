@@ -8,11 +8,18 @@ The steps and their content are in [spec.md](spec.md). This file tracks them.
 - [x] Fix the broken install command on the landing (#1258)
 - [x] Step 0 — Identity: better logo, delivered by spec 210 (#1260)
 - [x] Message architecture and reference pitch, [pitch.md](pitch.md) (2026-11-15)
-- [ ] Motion design piece built from the pitch, before the GitHub storefront (maintainer's call, 2026-11-15)
-- [ ] Step 1 — Hygiene: screenshots (#1127), French navigation labels, GitHub description, topics, homepage,
-      Discussions, README storefront, `sowel.org` DNS and `install.sh` redirect, clean-machine install test
-      (timed, from install to a first recipe running)
-- [ ] Step 2 — Showcase: spec and repository `sowel-site`; `docs.sowel.org` back to the manual
+- [x] Motion design piece built from the pitch, before the GitHub storefront: the launch film (rendered 2026-11-16; upload under Step 1)
+- [ ] Step 1 — Hygiene
+  - [x] GitHub description, topics, homepage, Discussions (2026-11-21)
+  - [x] README storefront (#1276, #1282)
+  - [x] Screenshots with live data (#1127, #1278); `pv-monitoring` kept as is (needs weather irradiance and a simulated fault the fixture lacks)
+  - [x] French navigation labels (#1279)
+  - [x] Clean-machine install test (2026-11-21, Docker Desktop on macOS, not a clean Linux host). It found
+        that the InfluxDB buckets and tasks were never created on a first start (#1284), fixed in v1.88.1
+  - [ ] Launch film upload
+- [x] Step 2 — Showcase
+  - [x] `sowel-site` is live at https://sowel.org (one bilingual page, no comparison section)
+  - [x] `docs.sowel.org` is a plain manual again: scroll-flip landing retired, Material theme on the site's tokens
 - [ ] Step 3 — Proof: 60 to 90 second video, one numbered real case, two articles (FR and EN)
 - [ ] Step 4 — Launch (week 7, staggered): French channels, English channels, awesome-selfhosted PR
 - [ ] Step 5 — Upkeep: reply within 24 hours, one piece a month, `demo.sowel.org` as second wave

@@ -295,8 +295,9 @@ async function main() {
     poolWaterTempTracker.getComputedDataForEquipment(eqId),
   );
 
-  // 9d. Weather temp extremes tracker (spec 134) — daily min/max per temperature
-  // binding on weather equipments, exposed as computed data.
+  // 9d. Temp extremes tracker (spec 134, widened by spec 211) — daily min/max
+  // per thermometer binding (weather stations and any room/outdoor reading),
+  // exposed as computed data.
   const weatherTempExtremesTracker = new WeatherTempExtremesTracker(
     db,
     eventBus,
@@ -375,15 +376,27 @@ async function main() {
   const influxClient = new InfluxClient(logger);
   influxClient.connect(config.influx);
 
-  // Setup downsampling buckets and tasks (fire-and-forget)
-  Promise.all([
-    // Rain copies from the hourly bucket, so it waits for that bucket to exist.
-    influxClient.ensureBuckets().then(() => influxClient.ensureRainBuckets()),
-    influxClient.ensureDownsamplingTasks(),
-    influxClient.ensureEnergyBuckets(),
-  ]).catch((err) => {
-    logger.warn({ err }, "InfluxDB bucket/task setup failed — will retry on next restart");
-  });
+  // Setup downsampling buckets and tasks (fire-and-forget). On a fresh install
+  // InfluxDB is often not answering yet, so wait for it first (#1284).
+  influxClient
+    .waitUntilReady()
+    .then((ready) => {
+      if (!ready) {
+        logger.warn(
+          "InfluxDB did not answer, or its org did not resolve, within 120 s — bucket/task setup skipped until next restart",
+        );
+        return;
+      }
+      return Promise.all([
+        // Rain copies from the hourly bucket, so it waits for that bucket to exist.
+        influxClient.ensureBuckets().then(() => influxClient.ensureRainBuckets()),
+        influxClient.ensureDownsamplingTasks(),
+        influxClient.ensureEnergyBuckets(),
+      ]);
+    })
+    .catch((err) => {
+      logger.warn({ err }, "InfluxDB bucket/task setup failed — will retry on next restart");
+    });
 
   // 11a. Create History Writer (passive observer — subscribes to events, writes to InfluxDB)
   const historyWriter = new HistoryWriter(
@@ -487,6 +500,7 @@ async function main() {
     logger,
     config.shadowMode, // spec 124 — runtime gate on startInstance
     capacityArbiter, // spec 140 — ctx.helpers.energy claims
+    influxClient, // spec 211 — read-only ctx.helpers.history
   );
   // All recipes are now external packages loaded by RecipeLoader
 
@@ -701,6 +715,7 @@ async function main() {
     auditLogger,
     logger,
     corsOrigins: config.cors.origins,
+    trustedProxies: config.api.trustedProxies,
     shadowMode: config.shadowMode,
     takeoverPending: shouldPromptTakeover({
       takeoverPending: identity.takeoverPending,

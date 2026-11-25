@@ -81,6 +81,8 @@ Cela crée le premier compte administrateur. Vous pourrez ajouter d'autres utili
 !!! warning
 Il n'existe aucun mécanisme de récupération de mot de passe. Assurez-vous de bien retenir vos identifiants admin.
 
+Changer votre mot de passe depuis **Réglages → Compte** déconnecte tous les autres navigateurs connectés à votre compte par mot de passe. L'appareil depuis lequel vous faites le changement reste connecté. Si vous pensez que quelqu'un d'autre connaît votre mot de passe, changez-le, puis vérifiez les tokens d'API listés dans **Réglages → Compte** : un token reste valide après un changement de mot de passe, supprimez donc ceux que vous ne reconnaissez pas.
+
 Une fois connecté, vous pouvez activer l'**authentification à deux facteurs** (code d'une application d'authentification, plus des codes de secours à usage unique) depuis **Réglages → Compte → Authentification à deux facteurs**. Elle est optionnelle et désactivée par défaut. Comme pour le mot de passe ci-dessus, il n'y a pas de récupération par email : si vous perdez à la fois votre application d'authentification et vos codes de secours, un autre admin peut réinitialiser votre authentification à deux facteurs depuis Réglages → Administration → Utilisateurs, ou — si vous êtes le seul admin — depuis l'hôte via `docker exec sowel node scripts/auth/reset-mfa.mjs <username>`.
 
 Une fois le premier compte créé, l'**écran de connexion** classique vous accueille à chaque visite suivante :
@@ -213,16 +215,17 @@ Votre maison est maintenant configurée. À partir de là, vous pouvez :
 
 Sowel fonctionne d'emblée avec des valeurs par défaut raisonnables. Pour une configuration avancée, vous pouvez définir des variables d'environnement dans un fichier `.env` à la racine du projet :
 
-| Variable        | Défaut                  | Description                                      |
-| --------------- | ----------------------- | ------------------------------------------------ |
-| `SQLITE_PATH`   | `./data/sowel.db`       | Emplacement du fichier de base de données        |
-| `API_PORT`      | `3000`                  | Port du serveur HTTP                             |
-| `API_HOST`      | `0.0.0.0`               | Adresse de bind                                  |
-| `LOG_LEVEL`     | `info`                  | Niveau de log (`debug`, `info`, `warn`, `error`) |
-| `CORS_ORIGINS`  | `*`                     | Origines CORS autorisées                         |
-| `INFLUX_URL`    | `http://localhost:8086` | URL InfluxDB                                     |
-| `INFLUX_ORG`    | `sowel`                 | Organisation InfluxDB                            |
-| `INFLUX_BUCKET` | `sowel`                 | Bucket principal InfluxDB                        |
+| Variable                | Défaut                  | Description                                                     |
+| ----------------------- | ----------------------- | --------------------------------------------------------------- |
+| `SQLITE_PATH`           | `./data/sowel.db`       | Emplacement du fichier de base de données                       |
+| `API_PORT`              | `3000`                  | Port du serveur HTTP                                            |
+| `API_HOST`              | `0.0.0.0`               | Adresse de bind                                                 |
+| `LOG_LEVEL`             | `info`                  | Niveau de log (`debug`, `info`, `warn`, `error`)                |
+| `CORS_ORIGINS`          | `*`                     | Origines CORS autorisées                                        |
+| `SOWEL_TRUSTED_PROXIES` | (vide)                  | Adresse du reverse proxy / tunnel, voir le guide de déploiement |
+| `INFLUX_URL`            | `http://localhost:8086` | URL InfluxDB                                                    |
+| `INFLUX_ORG`            | `sowel`                 | Organisation InfluxDB                                           |
+| `INFLUX_BUCKET`         | `sowel`                 | Bucket principal InfluxDB                                       |
 
 !!! note
 `JWT_SECRET` et `INFLUX_TOKEN` sont auto-générés au premier lancement et persistés dans le répertoire `data/`. Vous n'avez pas besoin de les définir manuellement.

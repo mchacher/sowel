@@ -1,5 +1,5 @@
 // Spec 210 — the Sowel mark, defined once. SowelLogo.tsx renders it; the static
-// copies (splash, favicons, PWA icons, docs landing) are kept in step with it by
+// copies (splash, favicons, PWA icons, docs logos) are kept in step with it by
 // logo-sync.test.ts. viewBox "20 10 160 165", round caps and joins.
 
 export const HOUSE =
