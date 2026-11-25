@@ -11,6 +11,25 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.90.x : Radiateurs fil pilote, et intégrations qui disent pourquoi
+
+### v1.90.0 — 2026-11-25 { #v1-90-0 }
+
+Les radiateurs électriques sur un module fil pilote ont désormais leurs vrais modes. Une intégration qui n'arrive pas à se connecter dit pourquoi dans son panneau, et les plugins MQTT proposent la bonne adresse de broker depuis Docker. Chaque thermomètre garde le minimum et le maximum du jour.
+
+**Après la mise à jour :**
+
+- **Radiateurs fil pilote** (NodOn SIN-4-FP-21 et équivalents, via Zigbee2MQTT 2.10.0) : un radiateur créé avant cette version affiche son mode sans boutons. Ouvrez son panneau des liaisons manquantes, ajoutez ce que propose le module, puis retirez l'ancienne liaison `state`, sinon une recette pourrait encore le commander. Voir [Équipements](user/equipments.md).
+- **Plugins MQTT** : mettez-les à jour (zigbee2mqtt 2.9.0 ou plus, lora2mqtt 2.3.0, tasmota 1.1.0, somfy-rts 1.2.0, shelly-mqtt 1.3.0, displays 0.3.0, apsystems 0.3.0) pour voir la raison d'un échec de connexion. Un broker sur la même machine se joint à `mqtt://host.docker.internal:1883`, ce qui demande les lignes `extra_hosts` du compose officiel. Voir [Préparer l'hôte](user/host-setup.md#pointer-sowel-vers-le-broker).
+
+- Nouveauté (équipements) : **modes fil pilote sur le radiateur électrique** (spec 217, #1319). L'équipement `heater` couvre les deux câblages : le relais qu'il connaissait (ON = éco) et les modules fil pilote jusqu'à six modes (Confort, Confort -1 °C, Confort -2 °C, Éco, Hors gel, Arrêt). La page et la fiche montrent un bouton par mode accepté, la ligne Maison un sélecteur. Un module fil pilote se lie par son mode et ses mesures, pas par son `state` on/off. Le chauffage de zone compte les radiateurs comme chauds en confort ; le bouton marche/arrêt des thermostats ne lit plus les radiateurs.
+- Nouveauté (plugins) : **une intégration dit pourquoi elle n'est pas connectée** (spec 216, #1317). Un plugin peut renvoyer une phrase courte par `getStatusDetail()` ; le panneau de l'intégration l'affiche sous le statut tant que le plugin n'est pas connecté, et la relit 3 s après un démarrage. `statusDetail` dans `GET /api/v1/integrations`. Les sept plugins MQTT s'en servent pour un nom introuvable, une connexion refusée, un broker qui ne répond pas et des identifiants refusés, et préremplissent l'URL du broker avec `mqtt://host.docker.internal:1883`.
+- Nouveauté (recettes) : **les extrêmes du jour sur chaque thermomètre, et l'historique pour les recettes** (spec 211, #1315). Tout équipement qui a un binding de température garde le minimum et le maximum du jour, plus seulement les stations météo. Les recettes disposent d'une lecture bornée `ctx.helpers.history.query()` (à l'heure ou au jour, 7 jours au plus, périodes complètes seulement).
+- Docs : la page de préparation de l'hôte explique quelle URL de broker utiliser depuis le conteneur (#1317) ; le manuel renvoie vers le site vitrine et ses articles (spec 209, #1313) ; une ancre stable pour la section de la spec 214 (#1281) ; un dossier feuille de route avec les idées de recettes écrites par IA et de serveur MCP, et le brouillon de la spec 215 (#1314, #1316) ; l'architecture du message du plan de lancement (spec 209, #1261).
+- Maintenance (registre) : les sept plugins MQTT pour la spec 216 (#1318), zigbee2mqtt 2.10.0 pour les modes fil pilote (#1320).
+
+---
+
 ## 1.89.x : Durcissement de la sécurité
 
 ### v1.89.0 — 2026-11-22 { #v1-89-0 }
