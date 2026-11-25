@@ -542,11 +542,11 @@ if (ctx.helpers.history) {
 
 - **Optional.** Absent on an older core and when InfluxDB is not wired: test `ctx.helpers.history` first.
 - **Complete periods only, stamped at their start** (UTC ISO-8601), whatever the category: the point `14:00` is the hour 14:00–15:00. The running hour or day is never returned, so `-24h` at 15:42 yields 23 hours (16:00 yesterday to 14:00 today); ask `-25h` for 24.
-- **Days.** `1d` cuts rain at local midnight, energy and continuous measures (temperature…) at UTC midnight. For energy by local day, read `1h` and keep the hours you want. A daily temperature point is labelled by its UTC date only approximately: for today's extremes, read `<alias>_min_today` / `_max_today`, never `1d` history.
+- **Days.** `1d` cuts rain at local midnight, energy and continuous measures (temperature…) at UTC midnight. For energy by local day, read `1h` and keep the hours you want. For today's extremes, read `<alias>_min_today` / `_max_today`: `1d` history holds complete days only.
 - **Sparse.** A period without samples has no point; nothing is zero-filled. Continuous measures also carry `min` and `max`.
 - **Bounds.** The window is clamped to the last 7 days. `alias` must be a data binding or a computed data entry of the equipment; a boolean or enum binding, an unknown alias or an invalid window answer `{ points: [], ok: true }` without querying.
-- **`ok: false`** means InfluxDB is not configured, unreachable or failed — not that there is nothing to read. Partial results are never returned.
-- **Rate limit.** At most 10 calls reaching InfluxDB per rolling minute per instance; beyond, the promise rejects with `Error("history rate limit")`. One call runs a few Flux queries (the last complete period is always read from the raw bucket, so it is never missing right after the hour); one call per series per closed hour is far under the limit. On a rejection, keep what you already read and resume at the next tick.
+- **`ok: false`** means InfluxDB is not configured, unreachable or failed, or the rate limit was reached — not that there is nothing to read. Partial results are never returned.
+- **Rate limit.** At most 10 calls reaching InfluxDB per rolling minute per instance; beyond, the call answers `{ points: [], ok: false }` (it never rejects). One call per series per closed hour is far under the limit. On `ok: false`, keep what you already read and resume at the next tick.
 
 ## Event Bus Events
 

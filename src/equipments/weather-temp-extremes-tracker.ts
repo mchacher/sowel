@@ -48,6 +48,8 @@ interface Envelope {
 }
 
 const TRACKED_CATEGORIES = new Set<DataCategory>(["temperature", "temperature_outdoor"]);
+/** How long the tracked-aliases cache of an equipment is trusted. */
+const TRACKED_TTL_MS = 60_000;
 
 // Day keys come from the shared formatter: three private copies of this exact
 // function drifted apart once before (the spec 061 timezone bugs), and a fix
@@ -79,12 +81,16 @@ export class WeatherTempExtremesTracker {
   /** equipmentId → alias → envelope */
   private readonly state = new Map<string, Map<string, Envelope>>();
   /**
-   * equipmentId → tracked alias → category. Built on first use, dropped on
-   * equipment.created/updated/removed (bindings and type changes emit
-   * `equipment.updated`), so a sample costs a map lookup, not a bindings query
-   * — every equipment's samples reach this handler since spec 211.
+   * equipmentId → tracked alias → category, so a sample costs a map lookup
+   * rather than a bindings query (every equipment's samples reach this
+   * handler since spec 211). Dropped on equipment.created/updated/removed,
+   * and rebuilt after TRACKED_TTL_MS: a plugin that reclassifies a device
+   * data category on rediscovery emits no equipment event.
    */
-  private readonly trackedCache = new Map<string, Map<string, DataCategory>>();
+  private readonly trackedCache = new Map<
+    string,
+    { at: number; aliases: Map<string, DataCategory> }
+  >();
   private unsubscribeData: (() => void) | null = null;
   private unsubscribeRemoved: (() => void) | null = null;
   private readonly stmts;
@@ -265,8 +271,9 @@ export class WeatherTempExtremesTracker {
 
   /** The tracked aliases of an equipment and their categories (see `trackedCache`). */
   private trackedOf(equipmentId: string): Map<string, DataCategory> {
+    const now = Date.now();
     const cached = this.trackedCache.get(equipmentId);
-    if (cached) return cached;
+    if (cached && now - cached.at < TRACKED_TTL_MS) return cached.aliases;
     const tracked = new Map<string, DataCategory>();
     const eq = this.equipmentManager.getById(equipmentId);
     if (eq) {
@@ -274,7 +281,7 @@ export class WeatherTempExtremesTracker {
         if (isTracked(eq.type, b)) tracked.set(b.alias, b.category);
       }
     }
-    this.trackedCache.set(equipmentId, tracked);
+    this.trackedCache.set(equipmentId, { at: now, aliases: tracked });
     return tracked;
   }
 

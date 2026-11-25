@@ -40,8 +40,6 @@ function makeInflux(options: {
   throwWhen?: (flux: string) => boolean;
   /** Yield the first row, then throw, for the queries this predicate matches. */
   failAfterFirstRowWhen?: (flux: string) => boolean;
-  /** Per-query rows: when it returns an array, that array replaces `rows`. */
-  rowsFor?: (flux: string) => Record<string, unknown>[] | undefined;
 }): InfluxClient {
   const {
     rows = [],
@@ -51,14 +49,13 @@ function makeInflux(options: {
     throwOnQuery = false,
     throwWhen,
     failAfterFirstRowWhen,
-    rowsFor,
   } = options;
 
   const queryApi = {
     iterateRows(flux: string) {
       capture?.push(flux);
       if (throwOnQuery || throwWhen?.(flux)) throw new Error("influx boom");
-      const out = rowsFor?.(flux) ?? (lastRows && flux.includes("|> last()") ? lastRows : rows);
+      const out = lastRows && flux.includes("|> last()") ? lastRows : rows;
       const failMidway = failAfterFirstRowWhen?.(flux) ?? false;
       return {
         async *[Symbol.asyncIterator]() {
@@ -749,71 +746,9 @@ describe("rain-hourly bucket (spec 186)", () => {
   });
 });
 
-describe("queryHistory — spec 211 (source, onError)", () => {
+describe("queryHistory — spec 211 (onError, rawOnly)", () => {
   const from = "2026-11-16T00:00:00Z";
   const to = "2026-11-17T00:00:00Z";
-  const fromDownsampled = (flux: string) => flux.includes('bucket: "sowel-');
-
-  it("spec 211 FR2.6 — source is `downsampled` when the downsampled bucket answered", async () => {
-    const influx = makeInflux({ rows: [{ _time: "2026-11-16T10:00:00Z", mean: 19 }] });
-    const result = await queryHistory(
-      influx,
-      { equipmentId: "eq-1", alias: "temperature", from, to, aggregation: "1h" },
-      logger,
-    );
-    expect(result.source).toBe("downsampled");
-  });
-
-  it("spec 211 FR2.6 — source is `raw` on the raw fallback (continuous)", async () => {
-    const influx = makeInflux({
-      rowsFor: (flux) =>
-        fromDownsampled(flux) ? [] : [{ _time: "2026-11-16T10:00:00Z", mean: 19 }],
-    });
-    const result = await queryHistory(
-      influx,
-      { equipmentId: "eq-1", alias: "temperature", from, to, aggregation: "1h" },
-      logger,
-    );
-    expect(result.points).toHaveLength(1);
-    expect(result.source).toBe("raw");
-  });
-
-  it("spec 211 FR2.6 — source is `raw` on the raw fallback (energy)", async () => {
-    const influx = makeInflux({
-      rowsFor: (flux) =>
-        fromDownsampled(flux) ? [] : [{ _time: "2026-11-16T10:00:00Z", _value: 120 }],
-    });
-    const result = await queryHistory(
-      influx,
-      { equipmentId: "eq-1", alias: "energy", from, to, aggregation: "1h", category: "energy" },
-      logger,
-    );
-    expect(result.points).toEqual([{ time: "2026-11-16T10:00:00Z", value: 120 }]);
-    expect(result.source).toBe("raw");
-  });
-
-  it("spec 211 FR2.6 — source is `downsampled` for rain read from the hourly buckets", async () => {
-    const influx = makeInflux({ rows: [{ _time: "2026-11-16T10:00:00Z", _value: 0.4 }] });
-    const result = await queryHistory(
-      influx,
-      { equipmentId: "eq-1", alias: "rain", from, to, aggregation: "1h", category: "rain" },
-      logger,
-    );
-    expect(result.source).toBe("downsampled");
-  });
-
-  it('spec 211 FR2.6 — the energy downsampled read still filters `_field == "mean"` (pre-existing defect, FR2.9)', async () => {
-    // Whoever fixes the energy-bucket field mismatch must revisit spec 211
-    // FR2.6's (category, source) table: recipes' buckets must not shift.
-    const capture: string[] = [];
-    await queryHistory(
-      makeInflux({ capture }),
-      { equipmentId: "eq-1", alias: "energy", from, to, aggregation: "1h", category: "energy" },
-      logger,
-    );
-    expect(capture[0]).toContain('from(bucket: "sowel-energy-hourly")');
-    expect(capture[0]).toContain('r._field == "mean"');
-  });
 
   it("spec 211 FR2.8 — onError is called when a query fails, even with partial points", async () => {
     let errors = 0;
@@ -866,10 +801,10 @@ describe("queryHistory — spec 211 (source, onError)", () => {
     expect(errors).toBe(0);
   });
 
-  it("spec 211 FR2.5.6 — rawOnly aggregates the raw bucket and never reads a downsampled one", async () => {
+  it("spec 211 FR2.5 — rawOnly aggregates the raw bucket and never reads a downsampled one", async () => {
     for (const category of [undefined, "energy", "rain"]) {
       const capture: string[] = [];
-      const result = await queryHistory(
+      await queryHistory(
         makeInflux({ capture, rows: [{ _time: "2026-11-16T10:00:00Z", _value: 1, mean: 1 }] }),
         {
           equipmentId: "eq-1",
@@ -885,7 +820,6 @@ describe("queryHistory — spec 211 (source, onError)", () => {
       expect(capture).toHaveLength(1);
       expect(capture[0]).toContain('from(bucket: "sowel")');
       expect(capture[0]).toContain("aggregateWindow(every: 1h");
-      expect(result.source).toBe("raw");
     }
   });
 });

@@ -370,9 +370,9 @@ export async function queryHistory(
      */
     onError?: () => void;
     /**
-     * Spec 211 FR2.5.6 — aggregate the raw bucket on the fly, never a
-     * downsampled one: for a period the downsampling task may not have
-     * written (or not wholly) yet. The REST route does not pass it.
+     * Spec 211 FR2.5 — aggregate the raw bucket on the fly, never a
+     * downsampled one (recipes read at most 7 days, the raw retention, and
+     * the last period may not be downsampled yet). The REST route does not pass it.
      */
     rawOnly?: boolean;
   },
@@ -403,8 +403,6 @@ export async function queryHistory(
   const targetBucket = params.rawOnly
     ? config.bucket
     : resolveBucket(config.bucket, resolution, params.category);
-  // Spec 211 FR2.6 — which bucket answered: the stamping depends on it.
-  let source: "downsampled" | "raw" = targetBucket !== config.bucket ? "downsampled" : "raw";
 
   try {
     if (resolution === "raw") {
@@ -519,7 +517,6 @@ export async function queryHistory(
           { bucket: targetBucket, equipmentId: params.equipmentId, alias: params.alias },
           "No data in cumulative bucket, falling back to raw",
         );
-        source = "raw";
         const fallbackFlux = buildFluxQuery({
           bucket: config.bucket,
           equipmentId: params.equipmentId,
@@ -573,7 +570,6 @@ export async function queryHistory(
           { bucket: targetBucket, equipmentId: params.equipmentId, alias: params.alias },
           "No data in downsampled bucket, falling back to raw",
         );
-        source = "raw";
         const fallbackFlux = buildAggregatedFluxQuery({
           bucket: config.bucket,
           baseBucket: config.bucket,
@@ -609,7 +605,7 @@ export async function queryHistory(
     params.onError?.();
   }
 
-  return { points, resolution, source };
+  return { points, resolution };
 }
 
 /**

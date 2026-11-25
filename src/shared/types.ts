@@ -571,8 +571,6 @@ export interface HistoryQueryResult {
   points: HistoryPoint[];
   resolution: "raw" | "1h" | "1d";
   dataType?: string; // "number" | "boolean" | "enum" — helps frontend choose chart style
-  /** Spec 211 FR2.6 — which bucket answered (`queryHistory` only; not sent by the REST route). */
-  source?: "downsampled" | "raw";
 }
 
 export interface OrderBinding {
@@ -952,7 +950,7 @@ export interface RecipeHistoryQuery {
 
 /**
  * Spec 211 FR2.2 — complete periods only, each stamped at its start (UTC
- * ISO-8601), sparse. `ok: false` means InfluxDB is not configured or failed;
+ * ISO-8601), sparse. `ok: false` means InfluxDB is not configured or failed, or the rate limit was reached;
  * `ok: true` with no points means there is nothing to read.
  */
 export interface RecipeHistoryResult {
@@ -962,8 +960,8 @@ export interface RecipeHistoryResult {
 
 /** Spec 211 FR2 — `ctx.helpers.history`. */
 export interface RecipeHistory {
-  /** Rejects with `Error("history rate limit")` beyond 10 calls reaching
-   *  InfluxDB per rolling minute; never throws otherwise. */
+  /** Never throws. Beyond 10 calls reaching InfluxDB per rolling minute,
+   *  answers `ok: false` like an InfluxDB failure. */
   query(params: RecipeHistoryQuery): Promise<RecipeHistoryResult>;
 }
 

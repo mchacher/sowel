@@ -1270,7 +1270,7 @@ describe("RecipeManager × ctx.helpers.history (spec 211)", () => {
 
     const q = { equipmentId: thermoId, alias: "temperature", from: "-24h", aggregation: "1h" };
     for (let i = 0; i < 10; i++) await tmp.query(q);
-    await expect(tmp.query(q)).rejects.toThrow("history rate limit");
+    await expect(tmp.query(q)).resolves.toEqual({ points: [], ok: false });
     await expect(inst.query(q)).resolves.toEqual({ points: [], ok: true });
   });
 

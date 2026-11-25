@@ -540,11 +540,11 @@ if (ctx.helpers.history) {
 
 - **Optionnel.** Absent sur un cœur plus ancien et quand InfluxDB n'est pas branché : testez d'abord `ctx.helpers.history`.
 - **Périodes complètes seulement, horodatées à leur début** (ISO-8601 UTC), quelle que soit la catégorie : le point `14:00` est l'heure 14:00–15:00. L'heure ou le jour en cours n'est jamais renvoyé, donc `-24h` à 15:42 donne 23 heures (16:00 la veille à 14:00 aujourd'hui) ; demandez `-25h` pour en avoir 24.
-- **Jours.** `1d` coupe la pluie à minuit heure locale, l'énergie et les mesures continues (température…) à minuit UTC. Pour l'énergie par jour local, lisez `1h` et gardez les heures voulues. Un point journalier de température n'est daté de son jour UTC qu'approximativement : pour les extrêmes du jour, lisez `<alias>_min_today` / `_max_today`, jamais l'historique `1d`.
+- **Jours.** `1d` coupe la pluie à minuit heure locale, l'énergie et les mesures continues (température…) à minuit UTC. Pour l'énergie par jour local, lisez `1h` et gardez les heures voulues. Pour les extrêmes du jour, lisez `<alias>_min_today` / `_max_today` : l'historique `1d` ne contient que des jours complets.
 - **Creux.** Une période sans échantillon n'a pas de point ; rien n'est complété par des zéros. Les mesures continues portent aussi `min` et `max`.
 - **Bornes.** La fenêtre est ramenée aux 7 derniers jours. `alias` doit être un binding de données ou une donnée calculée de l'équipement ; un binding booléen ou énuméré, un alias inconnu ou une fenêtre invalide répondent `{ points: [], ok: true }` sans requête.
-- **`ok: false`** signifie qu'InfluxDB n'est pas configuré, injoignable ou en échec — pas qu'il n'y a rien à lire. Un résultat partiel n'est jamais renvoyé.
-- **Limite de débit.** Au plus 10 appels atteignant InfluxDB par minute glissante et par instance ; au-delà, la promesse est rejetée avec `Error("history rate limit")`. Un appel lance quelques requêtes Flux (la dernière période complète est toujours lue dans le bucket brut, pour qu'elle ne manque jamais juste après l'heure) ; un appel par série et par heure close reste très loin de la limite. Sur un rejet, gardez ce que vous avez déjà lu et reprenez au tick suivant.
+- **`ok: false`** signifie qu'InfluxDB n'est pas configuré, injoignable ou en échec, ou que la limite de débit est atteinte — pas qu'il n'y a rien à lire. Un résultat partiel n'est jamais renvoyé.
+- **Limite de débit.** Au plus 10 appels atteignant InfluxDB par minute glissante et par instance ; au-delà, l'appel répond `{ points: [], ok: false }` (il n'est jamais rejeté). Un appel par série et par heure close reste très loin de la limite. Sur `ok: false`, gardez ce que vous avez déjà lu et reprenez au tick suivant.
 
 ## Événements de l'Event Bus
 

@@ -308,6 +308,23 @@ describe("WeatherTempExtremesTracker", () => {
     });
   });
 
+  it("spec 211 FR1.1 — a device data category reclassified without an equipment event is picked up within a minute", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 17, 10, 0, 0));
+    const eqId = createEquipment("sensor", [
+      { key: "probe", category: "generic", alias: "outdoor" },
+    ]);
+    startTracker();
+    emitSample(eqId, "outdoor", 4);
+    expect(entriesOf(eqId)).toEqual({});
+
+    // A plugin update rewrites the category on rediscovery: no equipment event.
+    db.prepare(`UPDATE device_data SET category = 'temperature_outdoor' WHERE key = 'probe'`).run();
+    vi.advanceTimersByTime(61_000);
+    emitSample(eqId, "outdoor", 5);
+    expect(entriesOf(eqId)).toEqual({ outdoor_min_today: 5, outdoor_max_today: 5 });
+  });
+
   it("spec 211 FR1.1 — a temperature_outdoor binding is tracked under its own alias", () => {
     const eqId = createEquipment("sensor", [
       { key: "temperature", category: "temperature_outdoor", alias: "outdoor" },
