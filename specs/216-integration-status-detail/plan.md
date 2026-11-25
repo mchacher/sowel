@@ -4,7 +4,7 @@
 
 - [x] Core: optional method, wrapping, API field, drawer box
 - [x] Docs: host setup (EN/FR), plugin development, API reference
-- [ ] Plugins: zigbee2mqtt, lora2mqtt, tasmota, shelly-mqtt, somfy-rts, displays, apsystems (default URL, error mapping, release, registry bump)
+- [x] Plugins: zigbee2mqtt, lora2mqtt, tasmota, shelly-mqtt, somfy-rts, displays, apsystems (default URL, error mapping, release, registry bump)
 
 ## Test plan
 

@@ -1,6 +1,6 @@
 # Spec 216: An integration says why it is not connected
 
-- **Status**: In progress (core done, plugins being released)
+- **Status**: Implemented (plugins released 2026-11-25: zigbee2mqtt 2.9.0, lora2mqtt 2.3.0, tasmota 1.1.0, somfy-rts 1.2.0, shelly-mqtt 1.3.0, displays 0.3.0, apsystems 0.3.0)
 - **Scope**: `IntegrationPlugin` (optional method), `GET /api/v1/integrations`, `IntegrationDrawer`, user docs (host setup); then the seven MQTT plugins
 - **Related**: spec 111 (plugin method wrapping), spec 212 (integration drawer)
 
@@ -37,4 +37,4 @@ The usual fixes are known: `host.docker.internal` (which needs `extra_hosts` in 
 - [x] A plugin returning a reason while disconnected shows it in the drawer; connected or disabled, nothing shows.
 - [x] A throwing `getStatusDetail` does not break the integrations list.
 - [x] Host setup page (EN and FR) covers `host.docker.internal`, `extra_hosts` and the troubleshooting cases.
-- [ ] Each MQTT plugin released with the default URL and the error mapping, registry bumped.
+- [x] Each MQTT plugin released with the default URL and the error mapping, registry bumped.
