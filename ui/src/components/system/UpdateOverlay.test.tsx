@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, userEvent, waitFor } from "../../test-utils";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { act, render, screen, userEvent, waitFor } from "../../test-utils";
 import i18n from "../../i18n";
 import { UpdateOverlay } from "./UpdateOverlay";
+import { getSystemVersion, type SystemVersionInfo } from "../../api";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useAuth } from "../../store/useAuth";
 import type { User } from "../../types";
@@ -107,5 +108,71 @@ describe("UpdateOverlay", () => {
     expect(screen.queryByText("[redacted]")).toBeNull();
     // And the in-progress spinner is gone, so the app is usable again.
     expect(screen.queryByText("Update in progress")).toBeNull();
+  });
+});
+
+/**
+ * #1337: on a phone the overlay showed for a blink, then the page reloaded
+ * before the update had started, and nothing told the user Sowel was updating.
+ * The overlay reloaded whenever the starting version was still unknown, which
+ * is what two /system/version answers racing at mount, or a WebSocket
+ * reconnecting on wake, produce.
+ */
+describe("UpdateOverlay reload", () => {
+  const reload = vi.fn();
+  const version = vi.mocked(getSystemVersion);
+  const info = (current: string) => ({ current }) as SystemVersionInfo;
+
+  beforeEach(() => {
+    reload.mockReset();
+    version.mockReset();
+    vi.stubGlobal("location", { ...window.location, reload });
+    useAuth.setState({ user: user("admin") });
+    useWebSocket.setState({
+      updateInProgress: true,
+      updateFailure: null,
+      status: "connected",
+      updateAvailable: { current: "1.65.0", latest: "1.66.0", releaseUrl: "" },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("does not reload when the reconnect answer beats the first capture", async () => {
+    // The mount capture never answers; the WebSocket effect's call does, with
+    // the version still running. That used to reload on the spot.
+    version.mockReturnValueOnce(new Promise(() => {})).mockResolvedValue(info("1.65.0"));
+    render(<UpdateOverlay />);
+
+    await waitFor(() => expect(version).toHaveBeenCalledTimes(2));
+    await Promise.resolve();
+    expect(reload).not.toHaveBeenCalled();
+    expect(screen.getByText("Update in progress")).toBeTruthy();
+  });
+
+  it("does not reload on a reconnect while the starting version is unknown", async () => {
+    useWebSocket.setState({ updateAvailable: null });
+    version.mockReturnValueOnce(new Promise(() => {})).mockResolvedValue(info("1.65.0"));
+    render(<UpdateOverlay />);
+
+    await waitFor(() => expect(version).toHaveBeenCalledTimes(2));
+    await Promise.resolve();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("reloads once the reconnected Sowel runs the new version", async () => {
+    version.mockResolvedValue(info("1.65.0"));
+    render(<UpdateOverlay />);
+    await waitFor(() => expect(version).toHaveBeenCalledTimes(2));
+    expect(reload).not.toHaveBeenCalled();
+
+    version.mockResolvedValue(info("1.66.0"));
+    // Two renders, as on a real reconnect: one setState pair would batch.
+    act(() => useWebSocket.setState({ status: "disconnected" }));
+    act(() => useWebSocket.setState({ status: "connected" }));
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
   });
 });
