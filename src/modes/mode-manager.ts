@@ -31,10 +31,10 @@ export class ModeManager {
   private prepareStatements() {
     return {
       insertMode: this.db.prepare(
-        `INSERT INTO modes (id, name, icon, description, active) VALUES (?, ?, ?, ?, 0)`,
+        `INSERT INTO modes (id, name, icon, description, group_name, active) VALUES (?, ?, ?, ?, ?, 0)`,
       ),
       updateMode: this.db.prepare(
-        `UPDATE modes SET name = ?, icon = ?, description = ?, updated_at = datetime('now') WHERE id = ?`,
+        `UPDATE modes SET name = ?, icon = ?, description = ?, group_name = ?, updated_at = datetime('now') WHERE id = ?`,
       ),
       deleteMode: this.db.prepare(`DELETE FROM modes WHERE id = ?`),
       getMode: this.db.prepare(`SELECT * FROM modes WHERE id = ?`),
@@ -42,6 +42,10 @@ export class ModeManager {
       setActive: this.db.prepare(
         `UPDATE modes SET active = ?, updated_at = datetime('now') WHERE id = ?`,
       ),
+      setActivated: this.db.prepare(
+        `UPDATE modes SET active = 1, activated_at = ?, updated_at = datetime('now') WHERE id = ?`,
+      ),
+      listActiveInGroup: this.db.prepare(`SELECT * FROM modes WHERE group_name = ? AND active = 1`),
       // Zone impacts
       upsertImpact: this.db.prepare(
         `INSERT INTO zone_mode_impacts (id, mode_id, zone_id, actions)
@@ -69,25 +73,38 @@ export class ModeManager {
 
   // ── Mode CRUD ─────────────────────────────────────────────
 
-  createMode(name: string, icon?: string, description?: string): Mode {
+  createMode(name: string, icon?: string, description?: string, group?: string | null): Mode {
+    const groupName = normalizeGroup(group);
     const id = randomUUID();
-    this.stmts.insertMode.run(id, name, icon ?? null, description ?? null);
+    this.stmts.insertMode.run(id, name, icon ?? null, description ?? null, groupName);
     const mode = this.getMode(id)!;
     this.eventBus.emit({ type: "mode.created", mode });
-    this.logger.info({ modeId: id, name }, "Mode created");
+    this.logger.info({ modeId: id, name, group: groupName }, "Mode created");
     return mode;
   }
 
-  updateMode(id: string, updates: { name?: string; icon?: string; description?: string }): Mode {
+  updateMode(
+    id: string,
+    updates: { name?: string; icon?: string; description?: string; group?: string | null },
+  ): Mode {
     const existing = this.getMode(id);
     if (!existing) throw new ModeError(`Mode not found: ${id}`, 404);
+    const groupName =
+      updates.group !== undefined ? normalizeGroup(updates.group) : (existing.group ?? null);
 
     this.stmts.updateMode.run(
       updates.name ?? existing.name,
       updates.icon !== undefined ? updates.icon : (existing.icon ?? null),
       updates.description !== undefined ? updates.description : (existing.description ?? null),
+      groupName,
       id,
     );
+
+    // Spec 219 — an active mode moved into a group that already has an active
+    // mode: the most recently activated stays, the others are switched off.
+    if (existing.active && groupName !== null && groupName !== (existing.group ?? null)) {
+      this.resolveGroupConflict(groupName, id);
+    }
 
     const mode = this.getMode(id)!;
     this.eventBus.emit({ type: "mode.updated", mode });
@@ -141,8 +158,24 @@ export class ModeManager {
       return;
     }
 
-    // Set active flag
-    this.stmts.setActive.run(1, id);
+    // Spec 219 — within a group, the other active modes are switched off
+    // first, in the same transaction as the activation.
+    const siblings = mode.group
+      ? (this.stmts.listActiveInGroup.all(mode.group) as ModeRow[])
+          .map(rowToMode)
+          .filter((m) => m.id !== id)
+      : [];
+    this.db.transaction(() => {
+      for (const sibling of siblings) this.stmts.setActive.run(0, sibling.id);
+      this.stmts.setActivated.run(new Date().toISOString(), id);
+    })();
+    for (const sibling of siblings) {
+      this.eventBus.emit({ type: "mode.deactivated", modeId: sibling.id, modeName: sibling.name });
+      this.logger.info(
+        { modeId: sibling.id, name: sibling.name, group: mode.group, replacedBy: mode.name },
+        "Mode deactivated by its group",
+      );
+    }
 
     // Execute all zone impacts
     const impacts = this.getImpactsByMode(id);
@@ -188,6 +221,32 @@ export class ModeManager {
     this.stmts.setActive.run(0, id);
     this.eventBus.emit({ type: "mode.deactivated", modeId: id, modeName: mode.name });
     this.logger.info({ modeId: id, name: mode.name }, "Mode deactivated");
+  }
+
+  /**
+   * Keeps the most recently activated active mode of `group` (a mode never
+   * activated since spec 219 counts as the oldest; a tie goes to `preferId`)
+   * and deactivates the others.
+   */
+  private resolveGroupConflict(group: string, preferId: string): void {
+    const active = (this.stmts.listActiveInGroup.all(group) as ModeRow[]).map(rowToMode);
+    if (active.length < 2) return;
+    const rank = (m: Mode) => m.activatedAt ?? "";
+    const keep = active.reduce((best, m) => {
+      const diff = rank(m).localeCompare(rank(best));
+      if (diff > 0) return m;
+      if (diff === 0 && m.id === preferId) return m;
+      return best;
+    });
+    for (const m of active) {
+      if (m.id === keep.id) continue;
+      this.stmts.setActive.run(0, m.id);
+      this.eventBus.emit({ type: "mode.deactivated", modeId: m.id, modeName: m.name });
+      this.logger.info(
+        { modeId: m.id, name: m.name, group, kept: keep.name },
+        "Mode deactivated by its group",
+      );
+    }
   }
 
   private executeImpact(impact: ZoneModeImpact, modeName: string, source: OrderSource): void {
@@ -299,7 +358,9 @@ interface ModeRow {
   name: string;
   icon: string | null;
   description: string | null;
+  group_name: string | null;
   active: number;
+  activated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -310,7 +371,9 @@ function rowToMode(row: ModeRow): Mode {
     name: row.name,
     icon: row.icon ?? undefined,
     description: row.description ?? undefined,
+    group: row.group_name ?? undefined,
     active: row.active === 1,
+    activatedAt: row.activated_at ? toISOUtc(row.activated_at) : undefined,
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };
@@ -330,6 +393,20 @@ function rowToImpact(row: ZoneModeImpactRow): ZoneModeImpact {
     zoneId: row.zone_id,
     actions: JSON.parse(row.actions) as ZoneModeImpactAction[],
   };
+}
+
+/** Spec 219 — trimmed group name, `null` for none; at most 50 characters. */
+export const MODE_GROUP_MAX_LENGTH = 50;
+
+function normalizeGroup(group: string | null | undefined): string | null {
+  if (group === undefined || group === null) return null;
+  if (typeof group !== "string") throw new ModeError("Mode group must be a string", 400);
+  const trimmed = group.trim();
+  if (trimmed === "") return null;
+  if (trimmed.length > MODE_GROUP_MAX_LENGTH) {
+    throw new ModeError(`Mode group longer than ${MODE_GROUP_MAX_LENGTH} characters`, 400);
+  }
+  return trimmed;
 }
 
 // ── Error ────────────────────────────────────────────────────

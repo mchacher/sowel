@@ -1476,7 +1476,11 @@ export interface Mode {
   name: string;
   icon?: string;
   description?: string;
+  /** Spec 219 — modes sharing a group exclude each other. Absent when ungrouped. */
+  group?: string;
   active: boolean;
+  /** Spec 219 — last activation (ISO). Absent if never activated since spec 219. */
+  activatedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

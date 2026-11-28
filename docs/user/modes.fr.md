@@ -15,7 +15,7 @@ Voyez les modes comme des préréglages pour toute votre maison. Au lieu d'étei
 | **Absence** | Tout éteint, sécurité activée                       |
 | **Éco**     | Chauffage réduit, lumières seulement si nécessaire  |
 
-Un seul mode peut être actif à la fois. L'activation d'un nouveau mode désactive le précédent.
+Plusieurs modes peuvent être actifs ensemble, par exemple Nuit et Invités. Quand des modes doivent s'exclure, comme Maison, Absence et Vacances, rangez-les dans un [groupe](#groupes-de-modes).
 
 ![Page Modes avec trois profils nommés et un toggle pour activer le mode courant](../screenshots/modes-fr.png)
 
@@ -27,6 +27,19 @@ Allez dans **Administration > Modes** et cliquez sur **Ajouter un mode**.
 2. Ajoutez une **description** facultative
 
 Le mode est créé mais n'a aucun effet pour l'instant. Ensuite, vous devez définir des **impacts** : ce qui se passe dans chaque zone quand le mode s'active.
+
+## Groupes de modes
+
+Un groupe rend ses modes exclusifs : activer l'un d'eux désactive les autres modes du même groupe. Les modes hors groupe ne sont pas concernés et peuvent rester actifs ensemble, comme avant.
+
+Pour ranger un mode dans un groupe, ouvrez le mode, cliquez sur **Modifier** et choisissez le **Groupe** : un groupe existant, ou **+ Nouveau groupe…** pour saisir un nouveau nom. Un groupe existe tant qu'un mode porte son nom ; il disparaît avec son dernier mode.
+
+Sur la page **Modes**, chaque groupe est une carte où ses modes ont des boutons radio, suivie des **Autres modes** avec leurs interrupteurs. Dans le menu, les modes sont rangés sous le nom de leur groupe.
+
+- La règle vaut quelle que soit la façon d'activer le mode : à la main, par le calendrier, par un bouton ou par l'API.
+- Un groupe peut n'avoir aucun mode actif : cliquez sur le mode coché pour l'éteindre.
+- Un créneau du calendrier ne devrait allumer qu'un mode par groupe : avec deux, les deux s'exécutent l'un après l'autre et le dernier reste actif.
+- Si vous rangez un mode actif dans un groupe qui a déjà un mode actif, le plus récemment activé reste actif et l'autre s'éteint. Le formulaire vous prévient avant d'enregistrer.
 
 ## Définir les impacts
 

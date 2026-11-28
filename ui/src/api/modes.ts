@@ -35,6 +35,7 @@ export async function createMode(data: {
   name: string;
   icon?: string;
   description?: string;
+  group?: string | null;
 }): Promise<ModeWithDetails> {
   return fetchJSON<ModeWithDetails>(`${API_BASE}/modes`, {
     method: "POST",
@@ -44,7 +45,7 @@ export async function createMode(data: {
 
 export async function updateMode(
   id: string,
-  data: { name?: string; icon?: string; description?: string },
+  data: { name?: string; icon?: string; description?: string; group?: string | null },
 ): Promise<ModeWithDetails> {
   return fetchJSON<ModeWithDetails>(`${API_BASE}/modes/${id}`, {
     method: "PUT",

@@ -15,7 +15,7 @@ Think of modes as presets for your entire home. Instead of manually turning off 
 | **Away**    | Everything off, security active           |
 | **Eco**     | Reduced heating, lights only when needed  |
 
-Only one mode can be active at a time. Activating a new mode deactivates the previous one.
+Several modes can be active together: Night and Guests, for example. When some modes must exclude each other, such as Home, Away and Holidays, put them in a [group](#mode-groups).
 
 ![Modes page with three named profiles and a toggle to activate the current mode](../screenshots/modes-en.png)
 
@@ -27,6 +27,19 @@ Go to **Administration > Modes** and click **Add Mode**.
 2. Add an optional **description**
 
 The mode is created but has no effects yet. Next, you need to define **impacts** -- what happens in each zone when the mode activates.
+
+## Mode groups
+
+A group makes its modes exclusive: activating one of them deactivates the others of the same group. Modes outside any group are not affected and can be on together, as before.
+
+To put a mode in a group, open the mode, click **Edit** and choose the **Group**: an existing one, or **+ New group…** to type a new name. A group exists as long as one mode carries its name, so it disappears with its last mode.
+
+On the **Modes** page, each group is a card with its modes as radio buttons, followed by the **Other modes** with their switches. In the menu, the modes are listed under their group's name.
+
+- The rule holds however the mode is activated: by hand, by the calendar, by a button or through the API.
+- A group may have no active mode: click the checked mode to switch it off.
+- A calendar slot should switch on only one mode per group: with two, both run in turn and the last one stays on.
+- If you put an active mode in a group that already has an active mode, the most recently activated one stays active and the other is switched off. The form warns you before you save.
 
 ## Defining impacts
 

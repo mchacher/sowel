@@ -320,16 +320,16 @@ The verdict comes from `classifyPowerReading` in `src/shared/reading-freshness.t
 
 ## Modes
 
-| Method   | Path                                      | Description                                          |
-| -------- | ----------------------------------------- | ---------------------------------------------------- |
-| `GET`    | `/api/v1/modes`                           | List all modes with details.                         |
-| `GET`    | `/api/v1/modes/:id`                       | Get mode with impacts and state.                     |
-| `POST`   | `/api/v1/modes`                           | Create mode. Body: `{ name, icon?, description? }`.  |
-| `PUT`    | `/api/v1/modes/:id`                       | Update mode. Body: `{ name?, icon?, description? }`. |
-| `DELETE` | `/api/v1/modes/:id`                       | Delete mode. Returns 204.                            |
-| `POST`   | `/api/v1/modes/:id/activate`              | Activate mode.                                       |
-| `POST`   | `/api/v1/modes/:id/deactivate`            | Deactivate mode.                                     |
-| `POST`   | `/api/v1/modes/:id/apply-to-zone/:zoneId` | Apply mode impacts to a specific zone.               |
+| Method   | Path                                      | Description                                                                                           |
+| -------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/modes`                           | List all modes with details.                                                                          |
+| `GET`    | `/api/v1/modes/:id`                       | Get mode with impacts and state.                                                                      |
+| `POST`   | `/api/v1/modes`                           | Create mode. Body: `{ name, icon?, description?, group? }`.                                           |
+| `PUT`    | `/api/v1/modes/:id`                       | Update mode. Body: `{ name?, icon?, description?, group? }` (`group: null` or `""` leaves the group). |
+| `DELETE` | `/api/v1/modes/:id`                       | Delete mode. Returns 204.                                                                             |
+| `POST`   | `/api/v1/modes/:id/activate`              | Activate mode.                                                                                        |
+| `POST`   | `/api/v1/modes/:id/deactivate`            | Deactivate mode.                                                                                      |
+| `POST`   | `/api/v1/modes/:id/apply-to-zone/:zoneId` | Apply mode impacts to a specific zone.                                                                |
 
 ### Zone Mode Impacts
 

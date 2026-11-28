@@ -5,7 +5,8 @@ import { Layers, Plus, Loader2, AlertCircle, ToggleRight, ToggleLeft, Clock } fr
 import { useModes } from "../store/useModes";
 import { useAuth } from "../store/useAuth";
 import { getActiveCalendar } from "../api";
-import { ModeForm } from "../components/modes/ModeForm";
+import { ModeForm, type ModeFormData } from "../components/modes/ModeForm";
+import { groupModes } from "../lib/mode-groups";
 import { Switch } from "../components/ui/Switch";
 import type { ModeWithDetails, CalendarSlot } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
@@ -32,7 +33,7 @@ export function ModesPage() {
       .catch(() => setCalendarSlots([]));
   }, [fetchModes, t]);
 
-  const handleCreate = async (data: { name: string; description?: string; icon?: string }) => {
+  const handleCreate = async (data: ModeFormData) => {
     const mode = await createMode(data);
     navigate(`/modes/${mode.id}`);
   };
@@ -103,16 +104,11 @@ export function ModesPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2 max-w-[720px]">
-          {modes.map((mode) => (
-            <ModeCard
-              key={mode.id}
-              mode={mode}
-              calendarSlots={calendarSlots}
-              onClick={() => navigate(`/modes/${mode.id}`)}
-            />
-          ))}
-        </div>
+        <ModeList
+          modes={modes}
+          calendarSlots={calendarSlots}
+          onOpen={(id) => navigate(`/modes/${id}`)}
+        />
       )}
 
       {/* Create modal */}
@@ -121,7 +117,77 @@ export function ModesPage() {
           title={t("modes.createMode")}
           onSubmit={handleCreate}
           onClose={() => setShowForm(false)}
+          modes={modes}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Spec 219 — one card per group, its modes as radio rows (one active at a
+ * time), then the ungrouped modes with their switches. Without any group the
+ * list is the plain one it always was.
+ */
+function ModeList({
+  modes,
+  calendarSlots,
+  onOpen,
+}: {
+  modes: ModeWithDetails[];
+  calendarSlots: CalendarSlot[];
+  onOpen: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const { groups, others } = groupModes(modes);
+  return (
+    <div className="max-w-[720px] space-y-4">
+      {groups.map((group, gi) => (
+        <div key={group.name} role="radiogroup" aria-label={group.name} className="card py-1">
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+            <Layers size={15} strokeWidth={1.5} className="text-text-tertiary" />
+            <span className="text-small font-semibold text-text-secondary truncate">
+              {group.name}
+            </span>
+            <span
+              id={`mode-group-hint-${gi}`}
+              className="ml-auto text-micro text-text-tertiary shrink-0"
+            >
+              {t("modes.groupExclusive")}
+            </span>
+          </div>
+          {group.modes.map((mode, i) => (
+            <div key={mode.id}>
+              {i > 0 && <div className="h-px bg-border-light mx-4" />}
+              <ModeCard
+                mode={mode}
+                calendarSlots={calendarSlots}
+                onClick={() => onOpen(mode.id)}
+                grouped
+                groupHintId={`mode-group-hint-${gi}`}
+              />
+            </div>
+          ))}
+        </div>
+      ))}
+      {others.length > 0 && (
+        <div>
+          {groups.length > 0 && (
+            <div className="text-caption font-medium text-text-tertiary mb-2 ml-1">
+              {t("modes.otherModes")}
+            </div>
+          )}
+          <div className="space-y-2">
+            {others.map((mode) => (
+              <ModeCard
+                key={mode.id}
+                mode={mode}
+                calendarSlots={calendarSlots}
+                onClick={() => onOpen(mode.id)}
+              />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -131,10 +197,16 @@ function ModeCard({
   mode,
   calendarSlots,
   onClick,
+  grouped = false,
+  groupHintId,
 }: {
   mode: ModeWithDetails;
   calendarSlots: CalendarSlot[];
   onClick: () => void;
+  /** Inside a group card: no card of its own, a radio instead of the switch. */
+  grouped?: boolean;
+  /** Id of the group's « one at a time » hint, read with the radio. */
+  groupHintId?: string;
 }) {
   const { t } = useTranslation();
   const activateMode = useModes((s) => s.activateMode);
@@ -170,7 +242,11 @@ function ModeCard({
   return (
     <div
       onClick={onClick}
-      className="card w-full flex items-center gap-4 px-4 py-3 hover:shadow-md transition-shadow duration-150 text-left cursor-pointer group"
+      className={`w-full flex items-center gap-4 px-4 py-3 text-left cursor-pointer group ${
+        grouped
+          ? "rounded-md hover:bg-border-light transition-colors duration-150"
+          : "card hover:shadow-md transition-shadow duration-150"
+      }`}
     >
       <div
         className={`w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 ${
@@ -200,13 +276,38 @@ function ModeCard({
       {/* Issue #912 — switching which mode is on is usage, not configuration,
           so every authenticated user gets this switch. Creating, editing and
           deleting a mode stay behind `isAdmin`. */}
-      <Switch
-        checked={mode.active}
-        onChange={(_, e) => void handleToggle(e)}
-        disabled={toggling}
-        title={mode.active ? t("modes.deactivate") : t("modes.activate")}
-        label={mode.name}
-      />
+      {grouped ? (
+        // Spec 219 — clicking the checked radio switches the mode off: a group
+        // may have no active mode.
+        <button
+          type="button"
+          role="radio"
+          aria-checked={mode.active}
+          aria-label={mode.name}
+          aria-describedby={groupHintId}
+          title={mode.active ? t("modes.deactivate") : t("modes.activate")}
+          disabled={toggling}
+          onClick={(e) => void handleToggle(e)}
+          className={`hit-44 relative w-5 h-5 shrink-0 rounded-full border-[1.5px] cursor-pointer disabled:opacity-50 disabled:cursor-default ${
+            mode.active ? "border-primary-fill" : "border-text-tertiary"
+          }`}
+        >
+          {mode.active && (
+            <span
+              aria-hidden="true"
+              className="absolute inset-[3.5px] rounded-full bg-primary-fill"
+            />
+          )}
+        </button>
+      ) : (
+        <Switch
+          checked={mode.active}
+          onChange={(_, e) => void handleToggle(e)}
+          disabled={toggling}
+          title={mode.active ? t("modes.deactivate") : t("modes.activate")}
+          label={mode.name}
+        />
+      )}
     </div>
   );
 }
