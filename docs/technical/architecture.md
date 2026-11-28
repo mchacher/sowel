@@ -243,6 +243,7 @@ The middle rule exists because an alias is not a vocabulary. On a submetered app
 | `motion-light-dimmable` | `mchacher/sowel-recipe-motion-light-dimmable` | recipe      |
 | `switch-light`          | `mchacher/sowel-recipe-switch-light`          | recipe      |
 | `presence-heater`       | `mchacher/sowel-recipe-presence-heater`       | recipe      |
+| `heater-schedule`       | `mchacher/sowel-recipe-heater-schedule`       | recipe      |
 | `presence-thermostat`   | `mchacher/sowel-recipe-presence-thermostat`   | recipe      |
 | `state-watch`           | `mchacher/sowel-recipe-state-watch`           | recipe      |
 | `state-trigger-light`   | `mchacher/sowel-recipe-state-trigger-light`   | recipe      |

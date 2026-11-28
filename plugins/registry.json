@@ -719,5 +719,26 @@
     "sowelVersion": ">=1.74.0",
     "owner": "mchacher",
     "sha256": "36038ace6eb09e9de8b3a27ce86e86ccc3fb70e1cf6c4e00faf1c2e35ea2b894"
+  },
+  {
+    "id": "heater-schedule",
+    "type": "recipe",
+    "category": "climate",
+    "name": "Heater Schedule",
+    "description": "Weekly programme for pilot-wire heaters: weekday and weekend slots, six modes (comfort, comfort -1, comfort -2, eco, frost protection, off), folded to comfort / eco on relay heaters.",
+    "icon": "CalendarClock",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-heater-schedule",
+    "version": "1.0.0",
+    "tags": ["heating", "schedule", "heater", "pilot-wire", "fil-pilote", "automation"],
+    "i18n": {
+      "fr": {
+        "name": "Programmation radiateurs",
+        "description": "Programme hebdomadaire des radiateurs fil pilote : plages semaine et week-end, six modes (confort, confort -1, confort -2, éco, hors-gel, arrêt), ramenés à confort / éco sur les radiateurs à relais."
+      }
+    },
+    "sowelVersion": ">=1.90.0",
+    "owner": "mchacher",
+    "sha256": "84e318b6a5d1b88e2ec3f28f498bc1e0771366fe47a5829fea313dcfe7efa78c"
   }
 ]
