@@ -9,14 +9,14 @@ The steps and their content are in [spec.md](spec.md). This file tracks them.
 - [x] Step 0 — Identity: better logo, delivered by spec 210 (#1260)
 - [x] Message architecture and reference pitch, [pitch.md](pitch.md) (2026-11-15)
 - [x] Motion design piece built from the pitch, before the GitHub storefront: the launch film (rendered 2026-11-16; upload under Step 1)
-- [ ] Step 1 — Hygiene
+- [x] Step 1 — Hygiene
   - [x] GitHub description, topics, homepage, Discussions (2026-11-21)
   - [x] README storefront (#1276, #1282)
   - [x] Screenshots with live data (#1127, #1278); `pv-monitoring` kept as is (needs weather irradiance and a simulated fault the fixture lacks)
   - [x] French navigation labels (#1279)
   - [x] Clean-machine install test (2026-11-21, Docker Desktop on macOS, not a clean Linux host). It found
         that the InfluxDB buckets and tasks were never created on a first start (#1284), fixed in v1.88.1
-  - [ ] Launch film upload
+  - [x] Launch film upload: dropped 2026-11-28, the film is on sowel.org and that is enough
 - [x] Step 2 — Showcase
   - [x] `sowel-site` is live at https://sowel.org (one bilingual page, no comparison section)
   - [x] `docs.sowel.org` is a plain manual again: scroll-flip landing retired, Material theme on the site's tokens
