@@ -616,7 +616,11 @@ function ZoneHeatingWidget({
           )}
           {heaters.modes.length > 0 && (
             <span className="text-caption text-text-secondary leading-none">
-              {heaters.common ? t(heaterModeKey(heaters.common)) : t("zones.commands.heatersMixed")}
+              {heaters.common
+                ? t(heaterModeKey(heaters.common))
+                : heaters.mixed
+                  ? t("zones.commands.heatersMixed")
+                  : t(heaterModeKey(null))}
             </span>
           )}
           <div className="flex items-center gap-1">

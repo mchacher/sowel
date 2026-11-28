@@ -173,10 +173,11 @@ function RelayHeaterControl({
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
 
-  const isOn = stateOf(equipment).mode === "eco";
-
-  // Fil pilote convention: relay ON = éco, relay OFF = confort
-  const isComfort = !isOn;
+  // Fil pilote convention: relay ON = éco, relay OFF = confort. No reading is
+  // unknown (#1331): shown as such, and a tap puts the heater in comfort.
+  const mode = stateOf(equipment).mode;
+  const isOn = mode === "eco";
+  const isComfort = mode === "comfort";
 
   // Category-first resolver: heater toggle is `toggle_power` / `light_toggle`
   // depending on the underlying device, with alias fallback for older
@@ -189,19 +190,22 @@ function RelayHeaterControl({
   const hasToggle =
     !!toggleBinding && (toggleBinding.type === "enum" || toggleBinding.type === "boolean");
 
-  const handleToggle = async (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+  const setRelayMode = async (target: "comfort" | "eco") => {
     if (executing || !toggleBinding) return;
     setExecuting(true);
     try {
       const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
       const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value = isOn ? offVal : onVal;
-      await onExecuteOrder(toggleBinding.alias, value);
+      await onExecuteOrder(toggleBinding.alias, target === "eco" ? onVal : offVal);
     } finally {
       setExecuting(false);
     }
+  };
+
+  const handleToggle = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    await setRelayMode(isComfort ? "eco" : "comfort");
   };
 
   if (compact) {
@@ -219,7 +223,9 @@ function RelayHeaterControl({
               ${
                 isComfort
                   ? "bg-heat/10 text-heat hover:bg-heat/20"
-                  : "bg-primary/10 text-primary hover:bg-primary/20"
+                  : isOn
+                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                    : "bg-border-light text-text-secondary hover:bg-border"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
@@ -227,10 +233,10 @@ function RelayHeaterControl({
           >
             {executing ? (
               <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-            ) : isComfort ? (
-              <Flame size={14} strokeWidth={1.5} />
-            ) : (
+            ) : isOn ? (
               <Snowflake size={14} strokeWidth={1.5} />
+            ) : (
+              <Flame size={14} strokeWidth={1.5} />
             )}
           </button>
         )}
@@ -246,27 +252,43 @@ function RelayHeaterControl({
         <div
           className={`
             w-10 h-10 rounded-md flex items-center justify-center
-            ${isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"}
+            ${heaterModeTint(stateOf(equipment))}
           `}
         >
-          {isComfort ? (
-            <Flame size={22} strokeWidth={1.5} />
-          ) : (
-            <Snowflake size={22} strokeWidth={1.5} />
-          )}
+          {isOn ? <Snowflake size={22} strokeWidth={1.5} /> : <Flame size={22} strokeWidth={1.5} />}
         </div>
         <div>
-          <div className="text-lead font-medium text-text">
-            {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
-          </div>
-          <div className="text-caption text-text-tertiary">
-            {isOn ? t("controls.heater.relayOn") : t("controls.heater.relayOff")}
-          </div>
+          <div className="text-lead font-medium text-text">{t(heaterModeKey(mode))}</div>
+          {mode !== null && (
+            <div className="text-caption text-text-tertiary">
+              {isOn ? t("controls.heater.relayOn") : t("controls.heater.relayOff")}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* #1331 — no reading: both modes, chosen explicitly. */}
+      {hasToggle && mode === null && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => void setRelayMode("comfort")}
+            disabled={executing}
+            className="flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium transition-colors duration-150 bg-heat/10 text-heat hover:bg-heat/20 disabled:opacity-50"
+          >
+            <Flame size={16} strokeWidth={1.5} /> {t("controls.heater.comfort")}
+          </button>
+          <button
+            onClick={() => void setRelayMode("eco")}
+            disabled={executing}
+            className="flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium transition-colors duration-150 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+          >
+            <Snowflake size={16} strokeWidth={1.5} /> {t("controls.heater.eco")}
+          </button>
+        </div>
+      )}
+
       {/* Toggle button */}
-      {hasToggle && (
+      {hasToggle && mode !== null && (
         <button
           onClick={handleToggle}
           disabled={executing}

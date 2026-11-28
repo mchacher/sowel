@@ -100,7 +100,7 @@ The setpoint has the same − / + buttons on the equipment page, in the Home row
 
 **Heater: relay or pilot-wire module.** It is one equipment type; what the device offers decides the controls.
 
-- A **relay** on the pilot wire gives Comfort / Eco (relay ON = eco, OFF = comfort).
+- A **relay** on the pilot wire gives Comfort / Eco (relay ON = eco, OFF = comfort). Until Sowel has a reading of the relay, the heater shows « Unknown » rather than Comfort: a tap puts it in comfort, and its panel offers both modes.
 - A **pilot-wire module** (NodOn SIN-4-FP-21 and similar, through Zigbee2MQTT) gives the modes it accepts among Comfort, Comfort -1 °C, Comfort -2 °C, Eco, Frost protection and Off. Sowel binds the mode and the power / energy readings, and leaves the module's on/off `state` out: on these modules it does not mean comfort or eco. A heater created before Sowel knew these modes shows its mode without buttons: open its missing-bindings panel and add what it offers, then remove the old `state` binding, or a recipe could still command it.
 - The setpoint stays on the radiator: a mode lowers the target, it does not set one. Some radiators only follow the pilot wire once put in external programming, and older ones may ignore Comfort -1 and -2. Sowel shows the order the module sends.
 - The Presence Heater recipe drives relays only; it refuses a heater that has no on/off `state`.

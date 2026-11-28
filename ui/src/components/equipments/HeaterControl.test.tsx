@@ -86,3 +86,51 @@ describe("HeaterControl — relay", () => {
     expect(send).toHaveBeenCalledWith("state", sent);
   });
 });
+
+// #1331 — a relay Sowel has no reading of is unknown, never comfort.
+describe("HeaterControl — relay without a reading", () => {
+  const relay = (value: unknown) =>
+    heater({
+      dataBindings: [{ id: "d-0", alias: "state", category: "light_state", value }],
+      orderBindings: [
+        {
+          id: "o-0",
+          alias: "state",
+          category: "light_toggle",
+          type: "enum",
+          enumValues: ["ON", "OFF"],
+        },
+      ],
+    });
+
+  it("shows Unknown and offers comfort and eco explicitly", async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    render(<HeaterControl equipment={relay(null)} onExecuteOrder={send} />);
+    expect(screen.getByText("Unknown")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Comfort/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Switch to/ })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /Eco/ }));
+    expect(send).toHaveBeenCalledWith("state", "ON");
+  });
+
+  it("compact: shows Unknown and a tap puts the heater in comfort (relay OFF)", async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    render(<HeaterControl equipment={relay(null)} onExecuteOrder={send} compact />);
+    expect(screen.getByText("Unknown")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Switch to comfort" }));
+    expect(send).toHaveBeenCalledWith("state", "OFF");
+  });
+
+  it("compact: still toggles a known relay both ways", async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    const { unmount } = render(
+      <HeaterControl equipment={relay("OFF")} onExecuteOrder={send} compact />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Switch to eco" }));
+    expect(send).toHaveBeenLastCalledWith("state", "ON");
+    unmount();
+    render(<HeaterControl equipment={relay("ON")} onExecuteOrder={send} compact />);
+    await userEvent.click(screen.getByRole("button", { name: "Switch to comfort" }));
+    expect(send).toHaveBeenLastCalledWith("state", "OFF");
+  });
+});

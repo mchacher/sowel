@@ -1569,18 +1569,19 @@ function HeaterDetailContent({
       ? toggleBindingRaw
       : undefined;
 
-  const handleToggle = async () => {
+  // Relay ON = eco, OFF = comfort.
+  const setRelayMode = async (target: "comfort" | "eco") => {
     if (executing || !toggleBinding) return;
     setExecuting(true);
     try {
       const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
       const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value = state.mode === "eco" ? offVal : onVal;
-      await onExecuteOrder(toggleBinding.alias, value);
+      await onExecuteOrder(toggleBinding.alias, target === "eco" ? onVal : offVal);
     } finally {
       setExecuting(false);
     }
   };
+  const handleToggle = () => setRelayMode(state.mode === "comfort" ? "eco" : "comfort");
 
   return (
     <div className="flex flex-col gap-6">
@@ -1599,7 +1600,26 @@ function HeaterDetailContent({
       <PilotWireModes equipment={equipment} onExecuteOrder={onExecuteOrder} />
 
       {/* Toggle button */}
-      {state.wiring === "relay" && toggleBinding && equipment.enabled && (
+      {/* #1331 — a relay Sowel has no reading of offers both modes. */}
+      {state.wiring === "relay" && state.mode === null && toggleBinding && equipment.enabled && (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => void setRelayMode("comfort")}
+            disabled={executing}
+            className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border bg-heat/10 text-heat border-heat/30 hover:bg-heat/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Flame size={18} strokeWidth={1.5} /> {t("controls.heater.comfort")}
+          </button>
+          <button
+            onClick={() => void setRelayMode("eco")}
+            disabled={executing}
+            className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Snowflake size={18} strokeWidth={1.5} /> {t("controls.heater.eco")}
+          </button>
+        </div>
+      )}
+      {state.wiring === "relay" && state.mode !== null && toggleBinding && equipment.enabled && (
         <button
           onClick={handleToggle}
           disabled={executing}

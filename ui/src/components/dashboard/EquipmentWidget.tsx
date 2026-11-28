@@ -1117,7 +1117,8 @@ function HeaterEquipmentWidget({
     try {
       const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
       const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value = state.mode === "eco" ? offVal : onVal;
+      // Comfort goes to eco; eco and an unknown relay go to comfort (#1331).
+      const value = state.mode === "comfort" ? onVal : offVal;
       await onExecuteOrder("state", value);
     } finally {
       setExecuting(false);
