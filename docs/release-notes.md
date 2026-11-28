@@ -11,6 +11,25 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.91.x: Mode groups, and heaters in zone orders
+
+### v1.91.0 — 2026-11-28 { #v1-91-0 }
+
+Modes can now exclude each other: put Home, Away and Holidays in one group and switching one on switches the others off. One zone order puts every heater of a room in the same mode. A relay heater Sowel has no reading of now shows as unknown instead of comfort.
+
+**After the update:**
+
+- **Modes**: nothing changes until you put modes in a group. Open a mode, click **Edit** and choose its **Group**. A calendar slot should then switch on only one mode per group. See [Modes](user/modes.md#mode-groups).
+- **A migration adds `modes.group_name` and `modes.activated_at`.** Active modes stay active.
+
+- Feat (modes): **mode groups, modes that exclude each other** (spec 219, #1335). A mode may belong to a group; activating it first switches off the other active modes of its group, whether it is switched by hand, by the calendar, by a button or through the API. A group may have no active mode. On the Modes page each group is a card with radio buttons, and the menu lists modes under their group. `group` in `POST` and `PUT /api/v1/modes`.
+- Feat (zones): **heaters in zone orders** (spec 218, #1330). One zone order, `allHeatersMode`, puts every heater of a room (child zones included) in a mode. A pilot-wire module takes the mode when it accepts it. A relay goes OFF for comfort and ON for eco and is left alone for any other mode. The Home command bar and the zone Heating widget get an « All heaters » menu with the common mode checked, and button actions get « Heater mode ».
+- Fix (equipments): **a relay heater with no reading is unknown, not comfort** (#1331, #1334). It shows « Unknown », no longer counts as heating and is left out of the zone's common mode. A tap on its tile puts it in comfort.
+- Fix (ui): **integration defaults shown in the form can be saved, and Start saves them first** (#1328, #1329). A fresh Zigbee2MQTT whose defaults were enough no longer stays « not configured » with Save greyed out.
+- Maintenance (registry): auto-off 0.1.0 (#1332) and heater-schedule 1.0.0 (#1333) added. Dependency updates (#1322 to #1326).
+
+---
+
 ## 1.90.x: Pilot-wire heaters, and integrations that say why
 
 ### v1.90.0 — 2026-11-25 { #v1-90-0 }
