@@ -54,4 +54,16 @@ describe("heater sheet", () => {
     await userEvent.click(screen.getByRole("button", { name: /Switch to/ }));
     expect(send.mock.calls[0].slice(-2)).toEqual(["state", sent]);
   });
+
+  // #1331 — no reading: Unknown, and both modes offered instead of a toggle.
+  it("relay without a reading: Unknown, comfort and eco offered", async () => {
+    const send = open(
+      [{ id: "s", alias: "state", category: "light_state", value: null }],
+      [toggle],
+    );
+    expect(screen.getByText("Unknown")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Switch to/ })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /Comfort/ }));
+    expect(send.mock.calls[0].slice(-2)).toEqual(["state", "OFF"]);
+  });
 });

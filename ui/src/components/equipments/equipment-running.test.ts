@@ -63,8 +63,8 @@ describe("isRunning (spec 208)", () => {
     expect(isRunning(eq("heater", [state(true)]))).toBe(false);
     // « on » in lower case is éco, as the badge reads it.
     expect(isRunning(eq("heater", [state("on")]))).toBe(false);
-    // No state reading: the badge says « Confort », and so does the tile.
-    expect(isRunning(eq("heater"))).toBe(true);
+    // No state reading: unknown, not heating (#1331).
+    expect(isRunning(eq("heater"))).toBe(false);
   });
 
   it("follows a thermostat's power and a pool heat pump's mode", () => {
@@ -118,6 +118,6 @@ describe("isRunning — heater (spec 217)", () => {
   it("keeps the relay rule", () => {
     expect(isRunning(eq("heater", [state(false)]))).toBe(true);
     expect(isRunning(eq("heater", [state(true)]))).toBe(false);
-    expect(isRunning(eq("heater"))).toBe(true);
+    expect(isRunning(eq("heater"))).toBe(false);
   });
 });

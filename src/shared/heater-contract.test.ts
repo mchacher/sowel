@@ -17,15 +17,25 @@ const mode = (value: unknown) => ({
 const order = (enumValues?: string[]) => ({ category: "set_pilot_wire_mode", enumValues });
 
 describe("resolveHeaterState (spec 217)", () => {
-  it("reads a relay as before: ON is eco, OFF or no reading is comfort", () => {
+  it("reads a relay: ON is eco, OFF is comfort", () => {
     expect(resolveHeaterState([relay(true)], []).mode).toBe("eco");
     expect(resolveHeaterState([relay("on")], []).mode).toBe("eco");
     expect(resolveHeaterState([relay(false)], []).mode).toBe("comfort");
+    expect(resolveHeaterState([relay("OFF")], []).mode).toBe("comfort");
+  });
+
+  // #1331 — a relay Sowel has no reading of is unknown, never comfort.
+  it("keeps a relay without a reading unknown, never comfort", () => {
     expect(resolveHeaterState([], [])).toEqual({
       wiring: "relay",
-      mode: "comfort",
+      mode: null,
       modes: ["comfort", "eco"],
     });
+    for (const value of [null, undefined, "", "toggle", 3]) {
+      const s = resolveHeaterState([relay(value)], []);
+      expect(s).toMatchObject({ wiring: "relay", mode: null });
+      expect(isHeaterRunning(s)).toBe(false);
+    }
   });
 
   it("lets the pilot mode win over a contradictory state", () => {
@@ -183,6 +193,8 @@ describe("zoneHeaterModes (spec 218)", () => {
     expect(zoneHeaterModes([relayHeater("OFF"), pilotHeater("comfort")]).common).toBe("comfort");
     expect(zoneHeaterModes([relayHeater("ON"), pilotHeater("comfort")]).common).toBeNull();
     expect(zoneHeaterModes([pilotHeater("comfort"), pilotHeater("bogus")]).common).toBeNull();
+    // #1331 — a relay with no reading leaves the zone without a common mode.
+    expect(zoneHeaterModes([relayHeater(null), pilotHeater("comfort")]).common).toBeNull();
   });
 
   it("offers nothing when no heater can be commanded", () => {

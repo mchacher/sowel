@@ -5,7 +5,8 @@
  * - `pilot`: a pilot-wire module carries the full order, under the categories
  *   `pilot_wire_mode` / `set_pilot_wire_mode`. Any on/off `state` is ignored.
  * - `relay`: an on/off relay on the pilot wire, ON = eco, OFF = comfort. That
- *   is a property of the wiring, whatever protocol drives the relay.
+ *   is a property of the wiring, whatever protocol drives the relay. A relay
+ *   with no reading is unknown, like a pilot module (#1331).
  *
  * Integrations translate their own vocabulary to the one below; nothing here
  * knows a vendor key or value. Pure TypeScript: the UI bundles it directly.
@@ -39,7 +40,7 @@ export function isPilotWireMode(value: unknown): value is PilotWireMode {
 }
 
 export type HeaterState =
-  | { wiring: "relay"; mode: "comfort" | "eco"; modes: readonly ["comfort", "eco"] }
+  | { wiring: "relay"; mode: "comfort" | "eco" | null; modes: readonly ["comfort", "eco"] }
   | { wiring: "pilot"; mode: PilotWireMode | null; modes: readonly PilotWireMode[] };
 
 interface HeaterData {
@@ -74,8 +75,17 @@ export function resolveHeaterState(
     };
   }
   const relay = data.find((d) => d.alias === "state" || d.category === "light_state");
-  const relayOn = relay?.value === true || String(relay?.value).toUpperCase() === "ON";
-  return { wiring: "relay", mode: relayOn ? "eco" : "comfort", modes: RELAY_MODES };
+  return { wiring: "relay", mode: relayMode(relay?.value), modes: RELAY_MODES };
+}
+
+/** ON is eco, OFF is comfort; anything else, a missing reading included, is unknown. */
+function relayMode(value: unknown): "comfort" | "eco" | null {
+  if (value === true) return "eco";
+  if (value === false) return "comfort";
+  const text = typeof value === "string" ? value.toUpperCase() : "";
+  if (text === "ON") return "eco";
+  if (text === "OFF") return "comfort";
+  return null;
 }
 
 /** The radiator heats to its own setpoint, or just under it. */

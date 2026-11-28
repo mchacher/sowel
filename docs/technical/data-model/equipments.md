@@ -383,7 +383,7 @@ Spec 191 builds charge sessions on these two contracts: the charger's `vehicle`,
 A `heater` has one contract module, `src/shared/heater-contract.ts`, and two wirings. `resolveHeaterState` is the only reader of both:
 
 - **pilot**: a `pilot_wire_mode` data point or a `set_pilot_wire_mode` order is bound, both under the alias `pilot_wire_mode`. Values: `comfort`, `comfort_minus_1`, `comfort_minus_2`, `eco`, `frost_protection`, `off`; the order's `enumValues` say which ones the module accepts. Any `state` is ignored; a missing or foreign value is unknown.
-- **relay**: otherwise. The `state` relay ON is eco, OFF is comfort.
+- **relay**: otherwise. The `state` relay ON is eco, OFF is comfort; a missing or foreign value is unknown (`mode: null`, #1331).
 
 A device with a pilot-wire point binds its mode and its metering (`power`, `energy`, `voltage`, `current`) only, from the UI and from `createWithAutoBindings` alike. A heater runs in its three comfort modes.
 
