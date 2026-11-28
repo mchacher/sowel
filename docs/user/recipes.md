@@ -37,6 +37,7 @@ Sowel ships several recipes through the official plugin registry. New ones land 
 | **Freecooling**             | Opens shutters or windows when outside is cooler than inside (and no rain in forecast)                                                                                                   |
 | **Pool Pump Schedule**      | Runs the pool pump for a daily duration tied to water temperature                                                                                                                        |
 | **State Watch**             | Monitors a data point and raises an alarm when it stays in a watched state too long                                                                                                      |
+| **Auto-off timer**          | Turns an equipment back off a set time after it was turned on, whoever turned it on; a pilot-wire heater goes back to eco                                                                |
 
 Browse the full list in **Administration > Plugins > Recipe**.
 
