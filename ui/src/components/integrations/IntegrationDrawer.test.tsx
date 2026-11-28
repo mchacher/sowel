@@ -303,6 +303,11 @@ describe("IntegrationDrawer — prefilled defaults", () => {
     expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("keeps Save off on a connected plugin with unsaved optional defaults", () => {
+    open(z2m({ status: "connected", settingValues: { mqtt_url: "mqtt://192.168.1.42:1883" } }));
+    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("does not start when the save fails", async () => {
     vi.mocked(api.updateSettings).mockRejectedValueOnce(new Error("boom"));
     open(z2m());

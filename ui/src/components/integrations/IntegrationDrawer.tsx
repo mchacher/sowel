@@ -62,8 +62,10 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const [triedSave, setTriedSave] = useState(false);
 
   // Reset form when integration changes, filling defaults into empty fields.
-  // A filled default is not saved yet: the form counts as changed, so Save
-  // works and Start writes it first (seen on a fresh Zigbee2MQTT install).
+  // A filled default is not saved yet: on a plugin not running, the form
+  // counts as changed, so Save works and Start writes it first (seen on a
+  // fresh Zigbee2MQTT install). A connected plugin already runs on its code
+  // defaults: a lit Save there would only look like a pending edit (#1328).
   useEffect(() => {
     if (integration) {
       const merged = { ...integration.settingValues };
@@ -75,7 +77,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
         }
       }
       setValues(merged);
-      setDirty(filled);
+      setDirty(filled && integration.status !== "connected");
       setMessage(null);
     }
   }, [integration]);
