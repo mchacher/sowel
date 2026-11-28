@@ -51,12 +51,12 @@ export function registerModeRoutes(app: FastifyInstance, deps: ModesDeps): void 
 
   // POST /api/v1/modes
   app.post<{
-    Body: { name: string; icon?: string; description?: string };
+    Body: { name: string; icon?: string; description?: string; group?: string | null };
   }>("/api/v1/modes", { schema: { body: createModeBodySchema } }, async (request, reply) => {
-    const { name, icon, description } = request.body;
+    const { name, icon, description, group } = request.body;
 
     try {
-      const mode = modeManager.createMode(name, icon, description);
+      const mode = modeManager.createMode(name, icon, description, group);
       return reply.code(201).send(mode);
     } catch (err) {
       if (err instanceof ModeError) return reply.code(err.status).send({ error: err.message });
@@ -67,7 +67,7 @@ export function registerModeRoutes(app: FastifyInstance, deps: ModesDeps): void 
   // PUT /api/v1/modes/:id
   app.put<{
     Params: { id: string };
-    Body: { name?: string; icon?: string; description?: string };
+    Body: { name?: string; icon?: string; description?: string; group?: string | null };
   }>("/api/v1/modes/:id", async (request, reply) => {
     try {
       const mode = modeManager.updateMode(request.params.id, request.body ?? {});

@@ -23,7 +23,7 @@ import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
 import { useRecipes } from "../store/useRecipes";
 import { useAuth } from "../store/useAuth";
-import { ModeForm } from "../components/modes/ModeForm";
+import { ModeForm, type ModeFormData } from "../components/modes/ModeForm";
 import { Switch } from "../components/ui/Switch";
 import type {
   ModeWithDetails,
@@ -49,6 +49,7 @@ export function ModeDetailPage() {
   const activateMode = useModes((s) => s.activateMode);
   const deactivateMode = useModes((s) => s.deactivateMode);
   const modes = useModes((s) => s.modes);
+  const fetchModes = useModes((s) => s.fetchModes);
   const equipments = useEquipments((s) => s.equipments);
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
   const tree = useZones((s) => s.tree);
@@ -73,6 +74,12 @@ export function ModeDetailPage() {
       setLoading(false);
     }
   }, [id]);
+
+  // Spec 219 — the edit form lists the groups and checks for a conflict from
+  // the store, which nothing else fills when this page is opened directly.
+  useEffect(() => {
+    void fetchModes();
+  }, [fetchModes]);
 
   useEffect(() => {
     fetchMode();
@@ -104,7 +111,7 @@ export function ModeDetailPage() {
     await fetchMode();
   };
 
-  const handleEdit = async (data: { name: string; description?: string }) => {
+  const handleEdit = async (data: ModeFormData) => {
     if (!mode) return;
     await updateMode(mode.id, data);
     await fetchMode();
@@ -267,7 +274,9 @@ export function ModeDetailPage() {
       {showEditForm && (
         <ModeForm
           title={t("modes.editMode")}
-          initial={{ name: mode.name, description: mode.description }}
+          initial={{ name: mode.name, description: mode.description, group: mode.group }}
+          modes={modes}
+          editing={mode}
           onSubmit={handleEdit}
           onClose={() => setShowEditForm(false)}
         />

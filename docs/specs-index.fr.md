@@ -344,6 +344,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 216 | Une intégration dit pourquoi elle n'est pas connectée                 | 🟡     | `getStatusDetail()` optionnel côté plugin, relayé en `statusDetail` et affiché dans le panneau de l'intégration ; les plugins MQTT proposent `mqtt://host.docker.internal:1883` et expliquent les erreurs de connexion. Livrée en v1.90.0.                                    |
 | 217 | Modes fil pilote sur le radiateur électrique                          | 🟡     | `heater` couvre relais et modules fil pilote (NodOn) : contrat `pilot_wire_mode`, six modes, sélecteur ; le plugin zigbee2mqtt traduit les valeurs ; complète 027. Livrée en v1.90.0.                                                                                         |
 | 218 | Radiateurs dans les ordres de zone                                    | 🟡     | Ordre de zone `allHeatersMode` : tous les radiateurs d'une zone dans un mode (relais : confort/éco seulement), menu flamme dans la vue Maison et le widget Chauffage, action de bouton ; suite de 217. Non publiée.                                                           |
+| 219 | Groupes de modes : des modes qui s'excluent                           | 🟡     | Un mode peut porter un `group` ; l'activer désactive les autres modes du groupe (page, calendrier, boutons, API) ; cartes à boutons radio sur la page Modes ; complète 010. Non livrée.                                                                                       |
 
 ---
 

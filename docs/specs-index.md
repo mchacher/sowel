@@ -365,6 +365,7 @@ Specs are grouped by theme and annotated with status:
 | 216 | An integration says why it is not connected                             | 🟡     | Optional `getStatusDetail()` on plugins, relayed as `statusDetail` and shown in the integration panel; MQTT plugins default to `mqtt://host.docker.internal:1883` and explain connection errors. Shipped in v1.90.0.                                                  |
 | 217 | Pilot-wire modes on the electric heater                                 | 🟡     | `heater` covers relay and pilot-wire modules (NodOn): `pilot_wire_mode` contract, six modes, mode selector; zigbee2mqtt plugin translates the values; amends 027. Shipped in v1.90.0.                                                                                 |
 | 218 | Heaters in zone orders                                                  | 🟡     | Zone order `allHeatersMode` puts every heater of a zone in a mode (relays only comfort/eco), flame menu on the Home view and the zone Heating widget, button action; follows 217. Unreleased.                                                                         |
+| 219 | Mode groups: modes that exclude each other                              | 🟡     | A mode may carry a `group`; activating it deactivates the other modes of its group (page, calendar, buttons, API); grouped radio cards on the Modes page; amends 010. Unreleased.                                                                                     |
 
 ---
 

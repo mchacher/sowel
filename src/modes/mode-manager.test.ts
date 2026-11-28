@@ -5,6 +5,8 @@ import { applyMigrations } from "../test-helpers/migrations.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 import type { EngineEvent } from "../shared/types.js";
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
@@ -361,5 +363,172 @@ describe("ModeManager", () => {
       const impacts = db.prepare("SELECT * FROM zone_mode_impacts WHERE mode_id = ?").all(mode.id);
       expect(impacts).toHaveLength(0);
     });
+  });
+
+  // ── Groups (spec 219) ──────────────────────────────────────
+
+  describe("groups", () => {
+    const setActivatedAt = (id: string, iso: string) =>
+      db.prepare("UPDATE modes SET activated_at = ? WHERE id = ?").run(iso, id);
+
+    it("stores a trimmed group on create, none when blank", () => {
+      expect(manager.createMode("Home", undefined, undefined, "  Presence ").group).toBe(
+        "Presence",
+      );
+      expect(manager.createMode("Night", undefined, undefined, "   ").group).toBeUndefined();
+      expect(manager.createMode("Guests").group).toBeUndefined();
+    });
+
+    it("rejects a group longer than 50 characters", () => {
+      expect(() => manager.createMode("Home", undefined, undefined, "x".repeat(51))).toThrow(
+        ModeError,
+      );
+    });
+
+    it("changes, clears or keeps the group on update", () => {
+      const mode = manager.createMode("Home", undefined, undefined, "Presence");
+      expect(manager.updateMode(mode.id, { group: "Heating" }).group).toBe("Heating");
+      expect(manager.updateMode(mode.id, { name: "House" }).group).toBe("Heating");
+      expect(manager.updateMode(mode.id, { group: null }).group).toBeUndefined();
+    });
+
+    it("deactivates the active sibling before activating, impacts of the new mode only", () => {
+      db.prepare("INSERT INTO zones (id, name) VALUES (?, ?)").run("zone-1", "Salon");
+      const home = manager.createMode("Home", undefined, undefined, "Presence");
+      const away = manager.createMode("Away", undefined, undefined, "Presence");
+      manager.setZoneImpact(home.id, "zone-1", [
+        { type: "order", equipmentId: "eq-home", orderAlias: "state", value: "ON" },
+      ]);
+      manager.setZoneImpact(away.id, "zone-1", [
+        { type: "order", equipmentId: "eq-away", orderAlias: "state", value: "OFF" },
+      ]);
+      equipmentManager.executeOrder.mockResolvedValue({ success: true });
+      manager.activateMode(home.id);
+      equipmentManager.executeOrder.mockClear();
+      events.length = 0;
+
+      manager.activateMode(away.id);
+
+      expect(manager.getMode(home.id)!.active).toBe(false);
+      expect(manager.getMode(away.id)!.active).toBe(true);
+      expect(events.map((e) => e.type)).toEqual(["mode.deactivated", "mode.activated"]);
+      expect(events[0]).toMatchObject({ modeId: home.id });
+      expect(equipmentManager.executeOrder).toHaveBeenCalledTimes(1);
+      expect(equipmentManager.executeOrder.mock.calls[0][0]).toBe("eq-away");
+    });
+
+    it("leaves other groups and ungrouped modes untouched", () => {
+      const home = manager.createMode("Home", undefined, undefined, "Presence");
+      const away = manager.createMode("Away", undefined, undefined, "Presence");
+      const comfort = manager.createMode("Comfort", undefined, undefined, "Heating");
+      const night = manager.createMode("Night");
+      manager.activateMode(home.id);
+      manager.activateMode(comfort.id);
+      manager.activateMode(night.id);
+
+      manager.activateMode(away.id);
+
+      expect(manager.getMode(comfort.id)!.active).toBe(true);
+      expect(manager.getMode(night.id)!.active).toBe(true);
+      expect(manager.getMode(home.id)!.active).toBe(false);
+    });
+
+    it("keeps ungrouped modes cumulative", () => {
+      const a = manager.createMode("Night");
+      const b = manager.createMode("Guests");
+      manager.activateMode(a.id);
+      manager.activateMode(b.id);
+      expect(manager.listModes().filter((m) => m.active)).toHaveLength(2);
+    });
+
+    it("allows a group with no active mode", () => {
+      const home = manager.createMode("Home", undefined, undefined, "Presence");
+      manager.createMode("Away", undefined, undefined, "Presence");
+      manager.activateMode(home.id);
+      manager.deactivateMode(home.id);
+      expect(manager.listModes().filter((m) => m.active)).toHaveLength(0);
+    });
+
+    it("records the activation time", () => {
+      const mode = manager.createMode("Home");
+      expect(mode.activatedAt).toBeUndefined();
+      manager.activateMode(mode.id);
+      expect(manager.getMode(mode.id)!.activatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+    });
+
+    it("moving an active mode into a group keeps the more recent one", () => {
+      const home = manager.createMode("Home", undefined, undefined, "Presence");
+      const holidays = manager.createMode("Holidays");
+      manager.activateMode(home.id);
+      manager.activateMode(holidays.id);
+      setActivatedAt(home.id, "2026-11-01T08:00:00.000Z");
+      setActivatedAt(holidays.id, "2026-11-20T08:00:00.000Z");
+      events.length = 0;
+
+      manager.updateMode(holidays.id, { group: "Presence" });
+
+      expect(manager.getMode(holidays.id)!.active).toBe(true);
+      expect(manager.getMode(home.id)!.active).toBe(false);
+      expect(events.find((e) => e.type === "mode.deactivated")).toMatchObject({
+        modeId: home.id,
+      });
+    });
+
+    it("moving an active mode into a group with a more recent one deactivates it", () => {
+      const home = manager.createMode("Home", undefined, undefined, "Presence");
+      const holidays = manager.createMode("Holidays");
+      manager.activateMode(home.id);
+      manager.activateMode(holidays.id);
+      setActivatedAt(home.id, "2026-11-20T08:00:00.000Z");
+      setActivatedAt(holidays.id, "2026-11-01T08:00:00.000Z");
+
+      manager.updateMode(holidays.id, { group: "Presence" });
+
+      expect(manager.getMode(holidays.id)!.active).toBe(false);
+      expect(manager.getMode(home.id)!.active).toBe(true);
+    });
+
+    it("moving an inactive mode into a group deactivates nothing", () => {
+      const home = manager.createMode("Home", undefined, undefined, "Presence");
+      const holidays = manager.createMode("Holidays");
+      manager.activateMode(home.id);
+      events.length = 0;
+
+      manager.updateMode(holidays.id, { group: "Presence" });
+
+      expect(manager.getMode(home.id)!.active).toBe(true);
+      expect(events.some((e) => e.type === "mode.deactivated")).toBe(false);
+    });
+  });
+});
+
+describe("migration 047 (spec 219)", () => {
+  it("keeps active modes, without a group, activatedAt from their last update", () => {
+    const dir = resolve(import.meta.dirname, "../../migrations");
+    const files = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
+    const db = new Database(":memory:");
+    for (const file of files.filter((f) => f < "047_")) {
+      db.exec(readFileSync(resolve(dir, file), "utf-8"));
+    }
+    db.prepare(
+      "INSERT INTO modes (id, name, active, updated_at) VALUES ('m1', 'Night', 1, '2026-11-02 21:30:00')",
+    ).run();
+    for (const file of files.filter((f) => f >= "047_")) {
+      db.exec(readFileSync(resolve(dir, file), "utf-8"));
+    }
+    const manager = new ModeManager(
+      db,
+      new EventBus(logger),
+      createMockEquipmentManager(),
+      createMockRecipeManager(),
+      logger,
+    );
+    const mode = manager.getMode("m1")!;
+    expect(mode.active).toBe(true);
+    expect(mode.group).toBeUndefined();
+    expect(mode.activatedAt).toBe("2026-11-02T21:30:00.000Z");
+    db.close();
   });
 });

@@ -19,10 +19,11 @@ interface ModesState {
     name: string;
     icon?: string;
     description?: string;
+    group?: string | null;
   }) => Promise<ModeWithDetails>;
   updateMode: (
     id: string,
-    data: { name?: string; icon?: string; description?: string },
+    data: { name?: string; icon?: string; description?: string; group?: string | null },
   ) => Promise<void>;
   deleteMode: (id: string) => Promise<void>;
   activateMode: (id: string) => Promise<void>;

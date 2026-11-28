@@ -14,7 +14,9 @@ interface Mode {
   name: string;
   icon?: string;
   description?: string;
+  group?: string; // Spec 219: modes sharing a group exclude each other
   active: boolean; // Persisted -- restored on engine restart
+  activatedAt?: string; // Spec 219: last activation, ISO
   createdAt: string;
   updatedAt: string;
 }
@@ -38,7 +40,8 @@ interface ModeWithDetails extends Mode {
 
 ### 2 Behavior
 
-- Modes are **not exclusive by default** -- multiple modes can be active simultaneously. Mutual exclusion (e.g. Day vs Night) is enforced at the policy level (calendar configuration, button bindings).
+- Modes are **not exclusive by default**: multiple modes can be active simultaneously.
+- **Groups** (spec 219): a mode may carry a `group` name (trimmed, at most 50 characters). `activateMode(id)` on a grouped mode first deactivates the other active modes of its group, in the same transaction, emitting one `mode.deactivated` each (no impact runs), then activates the mode. Calendar slots, button bindings and the API all go through `activateMode`, so the rule holds everywhere. A group may have no active mode. When `updateMode` moves an active mode into a group that already has one, the mode with the latest `activatedAt` stays active (a mode never activated since spec 219 counts as the oldest) and the others are deactivated. A group has no row of its own: it vanishes with its last mode.
 - On `activateMode(id)`, the manager iterates all `ZoneModeImpact` rows for the mode and applies each action: dispatching equipment orders, toggling recipe instances, or updating recipe instance params.
 - `applyModeToZone(modeId, zoneId)` re-runs the impact for a single zone without changing the active flag (useful for "re-apply current mode" on a specific room).
 - Action errors are logged but never abort the rest of the impact set.
@@ -52,6 +55,8 @@ CREATE TABLE modes (
   icon TEXT,
   description TEXT,
   active INTEGER NOT NULL DEFAULT 0,
+  group_name TEXT,                   -- spec 219, migration 047
+  activated_at TEXT,                 -- spec 219, ISO
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
