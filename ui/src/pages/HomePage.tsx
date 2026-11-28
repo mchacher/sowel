@@ -15,6 +15,7 @@ import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
 import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
 import { ZoneHeroLead } from "../components/home/ZoneHeroLead";
 import { ZoneCommands, type ZoneOrder } from "../components/home/ZoneCommands";
+import { zoneHeaterModes, type PilotWireMode } from "../lib/heater-contract";
 import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import { ZoneModesSection } from "../components/home/ZoneModesSection";
 import { ActivityPanel } from "../components/zones/ActivityPanel";
@@ -105,14 +106,25 @@ export function HomePage() {
     const shutters = equipments.filter((eq) => eq.type === "shutter" && scopeIds.has(eq.zoneId));
     return allSupportStop(shutters);
   }, [currentZone, equipments]);
+
+  // Spec 218 — the heater mode menu covers the same subtree as the zone order.
+  const heaterModes = useMemo(() => {
+    if (!currentZone) return { modes: [], common: null };
+    const scopeIds = new Set(collectZoneAndDescendantIds(currentZone));
+    return zoneHeaterModes(
+      equipments
+        .filter((eq) => eq.type === "heater" && eq.enabled && scopeIds.has(eq.zoneId))
+        .map((eq) => ({ data: eq.dataBindings, orders: eq.orderBindings })),
+    );
+  }, [currentZone, equipments]);
   const [commandLoading, setCommandLoading] = useState<ZoneOrder | null>(null);
 
   const handleZoneCommand = useCallback(
-    async (orderKey: ZoneOrder) => {
+    async (orderKey: ZoneOrder, value?: PilotWireMode) => {
       if (!zoneId) return;
       setCommandLoading(orderKey);
       try {
-        await executeZoneOrder(zoneId, orderKey);
+        await executeZoneOrder(zoneId, orderKey, value);
       } catch {
         // Silently handle — the user sees the result via live updates
       } finally {
@@ -180,12 +192,15 @@ export function HomePage() {
             historyEnabled={historyEnabled}
           />
         )}
-        {aggData && (aggData.lightsTotal > 0 || aggData.shuttersTotal > 0) && (
+        {((aggData && (aggData.lightsTotal > 0 || aggData.shuttersTotal > 0)) ||
+          heaterModes.modes.length > 0) && (
           <div className="mt-3">
             <ZoneCommands
-              hasLights={aggData.lightsTotal > 0}
-              hasShutters={aggData.shuttersTotal > 0}
+              hasLights={(aggData?.lightsTotal ?? 0) > 0}
+              hasShutters={(aggData?.shuttersTotal ?? 0) > 0}
               hasStoppableShutters={hasStoppableShutters}
+              heaterModes={heaterModes.modes}
+              heaterCommonMode={heaterModes.common}
               loading={commandLoading}
               onCommand={handleZoneCommand}
             />

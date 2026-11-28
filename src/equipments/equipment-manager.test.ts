@@ -1996,6 +1996,106 @@ describe("EquipmentManager", () => {
     });
   });
 
+  // Spec 218 — one zone order puts every heater in a mode, each through its wiring.
+  describe("zone order allHeatersMode (spec 218)", () => {
+    function relayHeater(zoneId: string, name: string, enabled = true) {
+      const eq = manager.create({ name, type: "heater", zoneId });
+      if (!enabled) manager.update(eq.id, { enabled: false });
+      const { dataIds, orderIds } = seedDevice(db, {
+        name: `Z${name}`,
+        dataKeys: [{ key: "state", type: "enum", category: "light_state", value: '"OFF"' }],
+        orderKeys: [
+          { key: "state", type: "enum", category: "light_toggle", enumValues: ["ON", "OFF"] },
+        ],
+      });
+      manager.addDataBinding(eq.id, dataIds[0]!, "state");
+      manager.addOrderBinding(eq.id, orderIds[0]!, "state");
+      return eq;
+    }
+    function pilotHeater(zoneId: string, name: string, modes: string[]) {
+      const eq = manager.create({ name, type: "heater", zoneId });
+      const { dataIds, orderIds } = seedDevice(db, {
+        name: `Z${name}`,
+        dataKeys: [
+          { key: "pilot_wire_mode", type: "enum", category: "pilot_wire_mode", value: '"comfort"' },
+        ],
+        orderKeys: [
+          {
+            key: "pilot_wire_mode",
+            type: "enum",
+            category: "set_pilot_wire_mode",
+            enumValues: modes,
+          },
+        ],
+      });
+      manager.addDataBinding(eq.id, dataIds[0]!, "pilot_wire_mode");
+      manager.addOrderBinding(eq.id, orderIds[0]!, "pilot_wire_mode");
+      return eq;
+    }
+    const payloads = () => mockPublished.map((m) => [m.topic, JSON.parse(m.payload)]);
+
+    it("puts pilot heaters in eco and switches relays ON", async () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      relayHeater(zone.id, "Relay");
+      pilotHeater(zone.id, "Pilot", ["comfort", "eco", "frost_protection", "off"]);
+      mockPublished.length = 0;
+
+      const result = await manager.executeZoneOrder([zone.id], "allHeatersMode", "eco");
+      expect(result).toEqual({ executed: 2, errors: 0 });
+      expect(payloads()).toEqual(
+        expect.arrayContaining([
+          [expect.stringContaining("ZRelay"), { state: "ON" }],
+          [expect.stringContaining("ZPilot"), { pilot_wire_mode: "eco" }],
+        ]),
+      );
+    });
+
+    it("leaves relays and modules that do not take the mode untouched", async () => {
+      const zone = zoneManager.create({ name: "Etage" });
+      relayHeater(zone.id, "Relay2");
+      pilotHeater(zone.id, "PilotFull", ["comfort", "eco", "frost_protection"]);
+      pilotHeater(zone.id, "PilotShort", ["comfort", "eco"]);
+      mockPublished.length = 0;
+
+      const result = await manager.executeZoneOrder(
+        [zone.id],
+        "allHeatersMode",
+        "frost_protection",
+      );
+      expect(result).toEqual({ executed: 1, errors: 0 });
+      expect(payloads()).toEqual([
+        [expect.stringContaining("ZPilotFull"), { pilot_wire_mode: "frost_protection" }],
+      ]);
+    });
+
+    it("refuses a value that is not a heater mode, sending nothing", async () => {
+      const zone = zoneManager.create({ name: "Bureau" });
+      relayHeater(zone.id, "Relay3");
+      mockPublished.length = 0;
+
+      await expect(
+        manager.executeZoneOrder([zone.id], "allHeatersMode", "ON"),
+      ).rejects.toMatchObject({
+        status: 400,
+      });
+      await expect(manager.executeZoneOrder([zone.id], "allHeatersMode")).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(mockPublished).toHaveLength(0);
+    });
+
+    it("skips a disabled heater", async () => {
+      const zone = zoneManager.create({ name: "Chambre" });
+      relayHeater(zone.id, "Relay4", false);
+      relayHeater(zone.id, "Relay5");
+      mockPublished.length = 0;
+
+      const result = await manager.executeZoneOrder([zone.id], "allHeatersMode", "comfort");
+      expect(result).toEqual({ executed: 1, errors: 0 });
+      expect(payloads()).toEqual([[expect.stringContaining("ZRelay5"), { state: "OFF" }]]);
+    });
+  });
+
   // ============================================================
   // Reactive pipeline: device.data.updated -> equipment.data.changed
   // ============================================================

@@ -166,13 +166,16 @@ The Sowel engine keeps the last **7 days** of events (capped at 2000 entries) an
 
 Each zone exposes automatic orders that you can use from the UI or in automations:
 
-| Order              | Effect                                                 |
-| ------------------ | ------------------------------------------------------ |
-| **All Off**        | Turns off all equipments in the zone (and child zones) |
-| **All Lights Off** | Turns off all light equipments in the zone             |
-| **All Lights On**  | Turns on all light equipments in the zone              |
+| Order                 | Effect                                                    |
+| --------------------- | --------------------------------------------------------- |
+| **All Off**           | Turns off all equipments in the zone (and child zones)    |
+| **All Lights Off**    | Turns off all light equipments in the zone                |
+| **All Lights On**     | Turns on all light equipments in the zone                 |
+| **All heaters: mode** | Puts every heater of the zone (and child zones) in a mode |
 
 A light with several channels is switched on or off on all of them.
+
+**All heaters.** On the Home view, the flame button of the command bar opens the modes the zone's heaters can take, the current one checked when they all share it. A heater on a relay only takes Comfort and Eco: any other mode leaves it as it is. A heater on a pilot-wire module takes the modes it accepts, and keeps its mode for the others. Disabled heaters are left out.
 
 These are available in the Home view, in the API, and as actions in recipes and modes.
 

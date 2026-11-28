@@ -58,12 +58,12 @@ This applies everywhere a single tap or click moves the gate: its Dashboard tile
 
 Displays aggregated data for an entire zone. You choose which **family** of data to show:
 
-| Family       | What it shows                                              |
-| ------------ | ---------------------------------------------------------- |
-| **Lights**   | Number of lights on / total, with a quick "all off" action |
-| **Shutters** | Number of shutters open / total, average position          |
-| **Heating**  | Average temperature, heating status                        |
-| **Sensors**  | Temperature, humidity, motion status                       |
+| Family       | What it shows                                                                                                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lights**   | Number of lights on / total, with a quick "all off" action                                                                                                                              |
+| **Shutters** | Number of shutters open / total, average position                                                                                                                                       |
+| **Heating**  | Average temperature, heating status; with heaters, their common mode (or « Mixed ») and a flame button to put them all in a mode; the on/off button only when the zone has a thermostat |
+| **Sensors**  | Temperature, humidity, motion status                                                                                                                                                    |
 
 Zone widgets give you a quick overview of an entire room without seeing individual equipment details.
 
