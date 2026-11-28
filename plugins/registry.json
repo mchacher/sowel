@@ -507,6 +507,27 @@
     "sha256": "6f6f3b6d955860935e4d01d285863c54b408af3b871a8025d095b95eef9accea"
   },
   {
+    "id": "auto-off",
+    "type": "recipe",
+    "category": "schedule",
+    "name": "Auto-off timer",
+    "description": "Turns an equipment back off a set time after it was turned on, whoever turned it on. A pilot-wire heater goes back to eco.",
+    "icon": "Timer",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-auto-off",
+    "version": "0.1.0",
+    "tags": ["automation", "timer", "heater", "light", "switch"],
+    "i18n": {
+      "fr": {
+        "name": "Minuterie",
+        "description": "Éteint un équipement un temps donné après son allumage, quelle qu'en soit l'origine. Un radiateur fil pilote repasse en éco."
+      }
+    },
+    "sowelVersion": ">=1.35.0",
+    "owner": "mchacher",
+    "sha256": "236364426eb031c79c439ddaa1c31bcbb7abc7b4879faeda3296350d155790f3"
+  },
+  {
     "id": "runtime-guard",
     "type": "recipe",
     "category": "safety",
