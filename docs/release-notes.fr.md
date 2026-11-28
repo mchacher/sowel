@@ -11,6 +11,25 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.91.x : Groupes de modes, et radiateurs dans les ordres de zone
+
+### v1.91.0 — 2026-11-28 { #v1-91-0 }
+
+Des modes peuvent désormais s'exclure : rangez Maison, Absence et Vacances dans un groupe, et allumer l'un éteint les autres. Un seul ordre de zone met tous les radiateurs d'une pièce dans le même mode. Un radiateur sur relais dont Sowel n'a pas de lecture s'affiche maintenant comme inconnu au lieu de confort.
+
+**Après la mise à jour :**
+
+- **Modes** : rien ne change tant que vous ne rangez pas de modes dans un groupe. Ouvrez un mode, cliquez sur **Modifier** et choisissez son **Groupe**. Un créneau du calendrier ne devrait alors allumer qu'un mode par groupe. Voir [Modes](user/modes.md#groupes-de-modes).
+- **Une migration ajoute `modes.group_name` et `modes.activated_at`.** Les modes actifs le restent.
+
+- Nouveauté (modes) : **groupes de modes, des modes qui s'excluent** (spec 219, #1335). Un mode peut appartenir à un groupe ; l'activer éteint d'abord les autres modes actifs du groupe, qu'il soit allumé à la main, par le calendrier, par un bouton ou par l'API. Un groupe peut n'avoir aucun mode actif. Sur la page Modes, chaque groupe est une carte à boutons radio, et le menu range les modes sous leur groupe. `group` dans `POST` et `PUT /api/v1/modes`.
+- Nouveauté (zones) : **radiateurs dans les ordres de zone** (spec 218, #1330). Un seul ordre de zone, `allHeatersMode`, met tous les radiateurs d'une pièce (zones enfants comprises) dans un mode. Un module fil pilote prend le mode s'il l'accepte. Un relais passe à OFF pour confort et ON pour éco, et n'est pas touché pour les autres modes. La barre de commandes de Maison et le widget Chauffage de zone ont un menu « Tous les radiateurs » avec le mode commun coché, et les actions de bouton un « Mode des radiateurs ».
+- Correction (équipements) : **un radiateur sur relais sans lecture est inconnu, pas en confort** (#1331, #1334). Il affiche « Inconnu », ne compte plus comme chauffant et sort du mode commun de la zone. Un appui sur sa tuile le met en confort.
+- Correction (ui) : **les valeurs par défaut affichées dans le formulaire d'une intégration s'enregistrent, et Démarrer les enregistre d'abord** (#1328, #1329). Un Zigbee2MQTT neuf dont les valeurs par défaut suffisaient ne reste plus « non configuré » avec Enregistrer grisé.
+- Maintenance (registre) : auto-off 0.1.0 (#1332) et heater-schedule 1.0.0 (#1333) ajoutés. Mises à jour de dépendances (#1322 à #1326).
+
+---
+
 ## 1.90.x : Radiateurs fil pilote, et intégrations qui disent pourquoi
 
 ### v1.90.0 — 2026-11-25 { #v1-90-0 }
