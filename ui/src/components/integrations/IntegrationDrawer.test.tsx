@@ -227,3 +227,87 @@ describe("IntegrationDrawer — status detail (spec 216)", () => {
     expect(screen.queryByText(reason)).toBeNull();
   });
 });
+
+/**
+ * Seen on 2026-11-28 on a fresh install: the Zigbee2MQTT form showed its
+ * defaults (broker, base topic) but Save stayed greyed out, and Start ran the
+ * plugin with nothing saved, so it stayed "not configured" without a word.
+ */
+describe("IntegrationDrawer — prefilled defaults", () => {
+  function z2m(over: Partial<IntegrationInfo> = {}): IntegrationInfo {
+    return {
+      id: "zigbee2mqtt",
+      name: "Zigbee2MQTT",
+      description: "Zigbee devices through Zigbee2MQTT",
+      icon: "Radio",
+      status: "not_configured",
+      configured: false,
+      enabled: true,
+      deviceCount: 0,
+      offlineDeviceCount: 0,
+      settings: [
+        {
+          key: "mqtt_url",
+          label: "MQTT broker",
+          type: "text",
+          required: true,
+          defaultValue: "mqtt://host.docker.internal:1883",
+        },
+        {
+          key: "base_topic",
+          label: "Base topic",
+          type: "text",
+          required: false,
+          defaultValue: "zigbee2mqtt",
+        },
+      ],
+      settingValues: {},
+      ...over,
+    };
+  }
+
+  beforeEach(() => {
+    vi.mocked(api.startIntegration).mockClear();
+  });
+
+  it("lets the defaults be saved as they are", async () => {
+    open(z2m());
+    const save = screen.getByRole("button", { name: "Save" });
+    expect((save as HTMLButtonElement).disabled).toBe(false);
+    await userEvent.click(save);
+    expect(api.updateSettings).toHaveBeenCalledWith({
+      "integration.zigbee2mqtt.mqtt_url": "mqtt://host.docker.internal:1883",
+      "integration.zigbee2mqtt.base_topic": "zigbee2mqtt",
+    });
+  });
+
+  it("saves the shown values before Start", async () => {
+    open(z2m());
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    await waitFor(() => expect(api.startIntegration).toHaveBeenCalledWith("zigbee2mqtt"));
+    expect(api.updateSettings).toHaveBeenCalledWith({
+      "integration.zigbee2mqtt.mqtt_url": "mqtt://host.docker.internal:1883",
+      "integration.zigbee2mqtt.base_topic": "zigbee2mqtt",
+    });
+    const saved = vi.mocked(api.updateSettings).mock.invocationCallOrder[0];
+    const started = vi.mocked(api.startIntegration).mock.invocationCallOrder[0];
+    expect(saved).toBeLessThan(started);
+  });
+
+  it("keeps Save off when everything is already saved", () => {
+    open(
+      z2m({
+        settingValues: { mqtt_url: "mqtt://192.168.1.42:1883", base_topic: "zigbee2mqtt" },
+      }),
+    );
+    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("does not start when the save fails", async () => {
+    vi.mocked(api.updateSettings).mockRejectedValueOnce(new Error("boom"));
+    open(z2m());
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    await waitFor(() => expect(screen.getByText("boom")).toBeTruthy());
+    expect(api.startIntegration).not.toHaveBeenCalled();
+  });
+});
