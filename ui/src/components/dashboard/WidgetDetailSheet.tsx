@@ -30,7 +30,7 @@ import { findOrderByCategory } from "../equipments/bindingUtils";
 import { PilotWireModes } from "../equipments/HeaterControl";
 import { heaterModeKey, heaterModeTint } from "../equipments/heaterMode";
 import { isRunning } from "../equipments/equipment-running";
-import { isHeaterRunning, resolveHeaterState } from "../../lib/heater-contract";
+import { isHeaterRunning, resolveHeaterState, zoneHeaterModes } from "../../lib/heater-contract";
 import { VmcControl } from "../equipments/VmcControl";
 import { EvChargerControl } from "../equipments/EvChargerControl";
 import { ElectricVehicleControl } from "../equipments/ElectricVehicleControl";
@@ -996,6 +996,18 @@ function ZoneHeatingDetail({
   // which drives the thermostats' on/off button.
   const warm = anyOn || equipments.some((eq) => eq.type === "heater" && isRunning(eq));
 
+  // Spec 218 — every heater of the zone in one mode; on/off for thermostats only.
+  const hasThermostats = equipments.some((eq) => eq.type === "thermostat");
+  const heaters = useMemo(
+    () =>
+      zoneHeaterModes(
+        equipments
+          .filter((eq) => eq.type === "heater" && eq.enabled)
+          .map((eq) => ({ data: eq.dataBindings, orders: eq.orderBindings })),
+      ),
+    [equipments],
+  );
+
   const displaySetpoint = shownSetpoint ?? avgSetpoint;
   const thermometerLevel = setpointLevel(displaySetpoint, bounds.min, bounds.max);
 
@@ -1033,23 +1045,52 @@ function ZoneHeatingDetail({
         />
       )}
 
-      <button
-        onClick={() => onCommand(anyOn ? "allThermostatsPowerOff" : "allThermostatsPowerOn")}
-        disabled={commandLoading !== null}
-        className={`h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer ${
-          anyOn
-            ? "bg-heat/10 text-heat border border-heat/30 hover:bg-heat/20"
-            : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
-        }`}
-      >
-        {commandLoading === "allThermostatsPowerOn" ||
-        commandLoading === "allThermostatsPowerOff" ? (
-          <Loader2 size={18} className="animate-spin" />
-        ) : (
-          <Power size={18} strokeWidth={1.5} />
-        )}
-        {anyOn ? t("controls.turnOff") : t("controls.turnOn")}
-      </button>
+      {heaters.modes.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-caption text-text-tertiary">{t("zones.commands.allHeaters")}</span>
+          <div className="grid grid-cols-2 gap-2">
+            {heaters.modes.map((mode) => {
+              const active = heaters.common === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={commandLoading !== null}
+                  onClick={() => void onCommand("allHeatersMode", mode)}
+                  className={`min-h-11 px-3 py-2 flex items-center justify-center rounded-sm text-small font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                    active
+                      ? `${heaterModeTint({ wiring: "pilot", mode, modes: [] })} border-current`
+                      : "border-border bg-surface text-text-secondary hover:border-primary/40"
+                  }`}
+                >
+                  {t(heaterModeKey(mode))}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {hasThermostats && (
+        <button
+          onClick={() => onCommand(anyOn ? "allThermostatsPowerOff" : "allThermostatsPowerOn")}
+          disabled={commandLoading !== null}
+          className={`h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer ${
+            anyOn
+              ? "bg-heat/10 text-heat border border-heat/30 hover:bg-heat/20"
+              : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
+          }`}
+        >
+          {commandLoading === "allThermostatsPowerOn" ||
+          commandLoading === "allThermostatsPowerOff" ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Power size={18} strokeWidth={1.5} />
+          )}
+          {anyOn ? t("controls.turnOff") : t("controls.turnOn")}
+        </button>
+      )}
     </div>
   );
 }

@@ -35,6 +35,9 @@ import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { shutterLevel } from "./widget-icons";
 import { WidgetCard } from "./WidgetCard";
 import { formatTemperature } from "../../lib/format";
+import { zoneHeaterModes } from "../../lib/heater-contract";
+import { HeaterModeMenu } from "../home/HeaterModeMenu";
+import { heaterModeKey } from "../equipments/heaterMode";
 
 const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
   lights: ["light_onoff", "light_dimmable", "light_color"],
@@ -579,6 +582,18 @@ function ZoneHeatingWidget({
   // which drives the thermostats' on/off button.
   const warm = anyOn || filteredEquipments.some((eq) => eq.type === "heater" && isRunning(eq));
 
+  // Spec 218 — the heaters' mode menu, and the on/off button for thermostats only.
+  const hasThermostats = filteredEquipments.some((eq) => eq.type === "thermostat");
+  const heaters = useMemo(
+    () =>
+      zoneHeaterModes(
+        filteredEquipments
+          .filter((eq) => eq.type === "heater" && eq.enabled)
+          .map((eq) => ({ data: eq.dataBindings, orders: eq.orderBindings })),
+      ),
+    [filteredEquipments],
+  );
+
   const displaySetpoint = shownSetpoint ?? avgSetpoint;
 
   const thermometerLevel = setpointLevel(displaySetpoint, bounds.min, bounds.max);
@@ -599,23 +614,42 @@ function ZoneHeatingWidget({
           ) : (
             <span className="text-title text-text-tertiary">{"\u2014"}</span>
           )}
-          <button
-            onClick={() => onCommand(anyOn ? "allThermostatsPowerOff" : "allThermostatsPowerOn")}
-            disabled={commandLoading !== null}
-            className={`w-7 h-7 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-              anyOn
-                ? "!border-heat/40 !text-heat !bg-heat/5 hover:!bg-heat/10"
-                : "hover:border-primary/40 hover:text-primary hover:bg-primary/5"
-            }`}
-            title={anyOn ? t("controls.turnOff") : t("controls.turnOn")}
-          >
-            {commandLoading === "allThermostatsPowerOn" ||
-            commandLoading === "allThermostatsPowerOff" ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Power size={14} strokeWidth={1.5} />
+          {heaters.modes.length > 0 && (
+            <span className="text-caption text-text-secondary leading-none">
+              {heaters.common ? t(heaterModeKey(heaters.common)) : t("zones.commands.heatersMixed")}
+            </span>
+          )}
+          <div className="flex items-center gap-1">
+            {hasThermostats && (
+              <button
+                onClick={() =>
+                  onCommand(anyOn ? "allThermostatsPowerOff" : "allThermostatsPowerOn")
+                }
+                disabled={commandLoading !== null}
+                className={`w-7 h-7 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+                  anyOn
+                    ? "!border-heat/40 !text-heat !bg-heat/5 hover:!bg-heat/10"
+                    : "hover:border-primary/40 hover:text-primary hover:bg-primary/5"
+                }`}
+                title={anyOn ? t("controls.turnOff") : t("controls.turnOn")}
+              >
+                {commandLoading === "allThermostatsPowerOn" ||
+                commandLoading === "allThermostatsPowerOff" ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Power size={14} strokeWidth={1.5} />
+                )}
+              </button>
             )}
-          </button>
+            <HeaterModeMenu
+              variant="tile"
+              modes={heaters.modes}
+              common={heaters.common}
+              loading={commandLoading === "allHeatersMode"}
+              disabled={commandLoading !== null}
+              onSelect={(mode) => void onCommand("allHeatersMode", mode)}
+            />
+          </div>
         </div>
       </div>
 

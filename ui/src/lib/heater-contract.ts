@@ -9,9 +9,11 @@ export {
   PILOT_WIRE_DATA_CATEGORY,
   PILOT_WIRE_MODES,
   PILOT_WIRE_ORDER_CATEGORY,
+  heaterModeOrder,
   isHeaterRunning,
   pilotWireBindingKeys,
   resolveHeaterState,
+  zoneHeaterModes,
   type HeaterState,
   type PilotWireMode,
 } from "../../../src/shared/heater-contract";

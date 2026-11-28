@@ -58,12 +58,12 @@ Cela vaut partout où une seule tape ou un seul clic fait bouger le portail : sa
 
 Affiche les données agrégées d'une zone entière. Vous choisissez quelle **famille** de données afficher :
 
-| Famille       | Ce qui est affiché                                                          |
-| ------------- | --------------------------------------------------------------------------- |
-| **Lumières**  | Nombre de lumières allumées / total, avec une action rapide "tout éteindre" |
-| **Volets**    | Nombre de volets ouverts / total, position moyenne                          |
-| **Chauffage** | Température moyenne, statut de chauffage                                    |
-| **Capteurs**  | Température, humidité, statut de mouvement                                  |
+| Famille       | Ce qui est affiché                                                                                                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lumières**  | Nombre de lumières allumées / total, avec une action rapide "tout éteindre"                                                                                                                                         |
+| **Volets**    | Nombre de volets ouverts / total, position moyenne                                                                                                                                                                  |
+| **Chauffage** | Température moyenne, statut de chauffage ; avec des radiateurs, leur mode commun (ou « Mixte ») et un bouton flamme pour tous les mettre dans un mode ; le bouton marche/arrêt seulement si la zone a un thermostat |
+| **Capteurs**  | Température, humidité, statut de mouvement                                                                                                                                                                          |
 
 Les widgets de zone vous donnent une vue d'ensemble rapide d'une pièce sans voir les détails de chaque équipement.
 

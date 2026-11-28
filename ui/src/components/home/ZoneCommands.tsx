@@ -1,8 +1,15 @@
 import { Lightbulb, LightbulbOff, ChevronUp, ChevronDown, Square, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { PilotWireMode } from "../../lib/heater-contract";
+import { HeaterModeMenu } from "./HeaterModeMenu";
 
 export type ZoneOrder =
-  "allLightsOn" | "allLightsOff" | "allShuttersOpen" | "allShuttersStop" | "allShuttersClose";
+  | "allLightsOn"
+  | "allLightsOff"
+  | "allShuttersOpen"
+  | "allShuttersStop"
+  | "allShuttersClose"
+  | "allHeatersMode";
 
 type Category = "light" | "light-off" | "shutter";
 
@@ -14,8 +21,11 @@ interface ZoneCommandsProps {
    *  button entirely rather than letting it silently fail for that
    *  one shutter while working for the rest. Defaults to true. */
   hasStoppableShutters?: boolean;
+  /** Spec 218 — modes the zone's heaters can take (empty: no heater group). */
+  heaterModes?: readonly PilotWireMode[];
+  heaterCommonMode?: PilotWireMode | null;
   loading: ZoneOrder | null;
-  onCommand: (order: ZoneOrder) => void;
+  onCommand: (order: ZoneOrder, value?: PilotWireMode) => void;
 }
 
 const CATEGORY_HOVER: Record<Category, string> = {
@@ -52,13 +62,16 @@ export function ZoneCommands({
   hasLights,
   hasShutters,
   hasStoppableShutters = true,
+  heaterModes = [],
+  heaterCommonMode = null,
   loading,
   onCommand,
 }: ZoneCommandsProps) {
   const { t } = useTranslation();
   const busy = loading !== null;
+  const hasHeaters = heaterModes.length > 0;
 
-  if (!hasLights && !hasShutters) return null;
+  if (!hasLights && !hasShutters && !hasHeaters) return null;
 
   return (
     <div
@@ -125,6 +138,21 @@ export function ZoneCommands({
             <ChevronDown size={16} strokeWidth={2} />
           </ZCmdsBtn>
         </>
+      )}
+
+      {hasHeaters && (hasLights || hasShutters) && (
+        <span className="w-px h-4 bg-border mx-1 flex-shrink-0" aria-hidden="true" />
+      )}
+
+      {hasHeaters && (
+        <HeaterModeMenu
+          variant="bar"
+          modes={heaterModes}
+          common={heaterCommonMode}
+          loading={loading === "allHeatersMode"}
+          disabled={busy}
+          onSelect={(mode) => onCommand("allHeatersMode", mode)}
+        />
       )}
     </div>
   );

@@ -186,3 +186,73 @@ describe("zone heating with heaters", () => {
     expect(api.executeZoneOrder).toHaveBeenCalledWith("z1", "allThermostatsPowerOn", undefined);
   });
 });
+
+// Spec 218 — every heater of the zone in one mode, from the tile and the sheet.
+describe("zone heaters mode", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const heater = (id: string, data: object, orders: object[]) =>
+    ({
+      ...thermostat(id, 20),
+      type: "heater",
+      dataBindings: [data],
+      orderBindings: orders,
+    }) as unknown as EquipmentWithDetails;
+  const relay = (id: string, on: boolean) =>
+    heater(id, { alias: "state", category: "light_state", value: on ? "ON" : "OFF" }, [
+      { alias: "state", category: "light_toggle", enumValues: ["ON", "OFF"] },
+    ]);
+  const pilot = (id: string, mode: string) =>
+    heater(id, { alias: "pilot_wire_mode", category: "pilot_wire_mode", value: mode }, [
+      {
+        alias: "pilot_wire_mode",
+        category: "set_pilot_wire_mode",
+        enumValues: ["comfort", "eco", "frost_protection"],
+      },
+    ]);
+
+  it("tile: no thermostat on/off in a heaters-only zone; the menu sends the mode", () => {
+    vi.mocked(api.executeZoneOrder).mockResolvedValue(undefined as never);
+    render(
+      <ZoneWidget
+        widget={WIDGET}
+        zone={ZONE}
+        equipments={[relay("r", false), pilot("p", "comfort")]}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Turn on" })).toBeNull();
+    expect(screen.getByText("Comfort")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "All heaters" }));
+    const items = screen.getAllByRole("menuitem").map((b) => b.textContent);
+    expect(items).toEqual(["Comfort", "Eco", "Frost protection"]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Frost protection" }));
+    expect(api.executeZoneOrder).toHaveBeenCalledWith("z1", "allHeatersMode", "frost_protection");
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("tile: says « Mixed » when the heaters differ; relays only offer comfort and eco", () => {
+    render(
+      <ZoneWidget widget={WIDGET} zone={ZONE} equipments={[relay("a", false), relay("b", true)]} />,
+    );
+    expect(screen.getByText("Mixed")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "All heaters" }));
+    expect(screen.getAllByRole("menuitem").map((b) => b.textContent)).toEqual(["Comfort", "Eco"]);
+  });
+
+  it("sheet: one button per mode, no thermostat on/off", () => {
+    vi.mocked(api.executeZoneOrder).mockResolvedValue(undefined as never);
+    render(
+      <ZoneDetailSheet
+        widget={WIDGET}
+        zone={ZONE}
+        equipments={[pilot("p", "eco")]}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /Turn on/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Eco" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Comfort" }));
+    expect(api.executeZoneOrder).toHaveBeenCalledWith("z1", "allHeatersMode", "comfort");
+  });
+});

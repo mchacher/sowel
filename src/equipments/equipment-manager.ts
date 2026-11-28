@@ -40,7 +40,13 @@ import {
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import { resolveFreshnessBudget } from "../shared/reading-freshness.js";
 import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
-import { HEATER_CATEGORY_ALIASES, pilotWireBindingKeys } from "../shared/heater-contract.js";
+import {
+  HEATER_CATEGORY_ALIASES,
+  heaterModeOrder,
+  isPilotWireMode,
+  pilotWireBindingKeys,
+  resolveHeaterState,
+} from "../shared/heater-contract.js";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-contract.js";
 import type { Device } from "../shared/types.js";
@@ -1641,6 +1647,11 @@ export class EquipmentManager {
        * (zone `lightsOn`), so "all lights off" must switch every channel off.
        */
       everyChannel?: true;
+      /**
+       * Spec 218 — the body carries a heater mode, and each heater's own order
+       * comes from its wiring (`heaterModeOrder`), not from `orderCategory`.
+       */
+      heaterMode?: true;
     }
   > = {
     allLightsOn: {
@@ -1673,6 +1684,12 @@ export class EquipmentManager {
       orderCategory: "set_setpoint",
       value: "FROM_BODY",
     },
+    allHeatersMode: {
+      types: ["heater"],
+      orderCategory: "set_pilot_wire_mode",
+      value: "FROM_BODY",
+      heaterMode: true,
+    },
   };
 
   static readonly VALID_ZONE_ORDER_KEYS = Object.keys(EquipmentManager.ZONE_ORDERS);
@@ -1700,6 +1717,9 @@ export class EquipmentManager {
         400,
       );
     }
+    if (mapping.heaterMode && !isPilotWireMode(resolvedValue)) {
+      throw new EquipmentError(`Zone order '${orderKey}' requires a heater mode`, 400);
+    }
 
     let executed = 0;
     let errors = 0;
@@ -1714,10 +1734,19 @@ export class EquipmentManager {
         const details = this.getByIdWithDetails(eq.id);
         if (!details || details.orderBindings.length === 0) continue;
 
-        const matching = details.orderBindings.filter(
-          (ob) => ob.category === mapping.orderCategory,
-        );
-        const targets = mapping.everyChannel ? matching : matching.slice(0, 1);
+        let targets: { alias: string; value: unknown }[];
+        if (mapping.heaterMode && isPilotWireMode(resolvedValue)) {
+          // Spec 218 — a relay takes comfort / eco only, a pilot module the
+          // modes it accepts; any other heater is left as it is.
+          const state = resolveHeaterState(details.dataBindings, details.orderBindings);
+          const order = heaterModeOrder(state, details.orderBindings, resolvedValue);
+          targets = order ? [order] : [];
+        } else {
+          const matching = details.orderBindings
+            .filter((ob) => ob.category === mapping.orderCategory)
+            .map((ob) => ({ alias: ob.alias, value: resolvedValue }));
+          targets = mapping.everyChannel ? matching : matching.slice(0, 1);
+        }
 
         if (targets.length === 0) {
           this.logger.debug(
@@ -1727,19 +1756,16 @@ export class EquipmentManager {
               orderKey,
               orderCategory: mapping.orderCategory,
             },
-            "Zone order skipped — no matching order category",
+            mapping.heaterMode
+              ? "Zone order skipped — heater cannot take this mode"
+              : "Zone order skipped — no matching order category",
           );
           continue;
         }
 
-        for (const orderBinding of targets) {
+        for (const target of targets) {
           try {
-            const result = await this.executeOrder(
-              eq.id,
-              orderBinding.alias,
-              resolvedValue,
-              source,
-            );
+            const result = await this.executeOrder(eq.id, target.alias, target.value, source);
             if (result.success) {
               executed++;
             } else {
@@ -1753,7 +1779,7 @@ export class EquipmentManager {
                 equipmentId: eq.id,
                 equipmentName: eq.name,
                 orderKey,
-                alias: orderBinding.alias,
+                alias: target.alias,
               },
               "Zone order failed for equipment",
             );

@@ -166,13 +166,16 @@ Le moteur Sowel garde les **7 derniers jours** d'événements (avec un plafond �
 
 Chaque zone expose des ordres automatiques que vous pouvez utiliser depuis l'UI ou dans les automatisations :
 
-| Ordre                        | Effet                                                         |
-| ---------------------------- | ------------------------------------------------------------- |
-| **Tout éteindre**            | Éteint tous les équipements de la zone (et des zones enfants) |
-| **Toutes lumières éteintes** | Éteint tous les équipements lumière de la zone                |
-| **Toutes lumières allumées** | Allume tous les équipements lumière de la zone                |
+| Ordre                          | Effet                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| **Tout éteindre**              | Éteint tous les équipements de la zone (et des zones enfants)          |
+| **Toutes lumières éteintes**   | Éteint tous les équipements lumière de la zone                         |
+| **Toutes lumières allumées**   | Allume tous les équipements lumière de la zone                         |
+| **Tous les radiateurs : mode** | Met tous les radiateurs de la zone (et des zones enfants) dans un mode |
 
 Une lumière à plusieurs canaux est allumée ou éteinte sur tous ses canaux.
+
+**Tous les radiateurs.** Dans la vue Maison, le bouton flamme de la barre de commandes ouvre les modes que les radiateurs de la zone savent prendre, le mode actuel coché quand ils le partagent tous. Un radiateur sur relais ne prend que Confort et Éco : tout autre mode le laisse tel quel. Un radiateur sur module fil pilote prend les modes qu'il accepte, et garde son mode pour les autres. Les radiateurs désactivés ne sont pas commandés.
 
 Ils sont disponibles dans la vue Maison, dans l'API, et comme actions dans les recettes et les modes.
 

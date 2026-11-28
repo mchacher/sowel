@@ -13,13 +13,21 @@ import { useRecipes } from "../../store/useRecipes";
 import { useZones } from "../../store/useZones";
 import type { ButtonActionBinding, ButtonEffectType, ZoneWithChildren } from "../../types";
 import { allSupportStop } from "../../lib/binding-utils";
+import { zoneHeaterModes } from "../../lib/heater-contract";
+import { heaterModeKey } from "./heaterMode";
 import { flattenZonesWithPath } from "../../lib/zone-path";
 import { FIELD_LABEL } from "../ui/text-roles";
 import { ConfigRow } from "./ConfigRow";
 
 const DEFAULT_BUTTON_ACTIONS = ["single", "double", "hold"];
 
-const ZONE_ORDER_OPTIONS: { key: string; group: string; parametric: boolean }[] = [
+// `parametric`: a number field; `heaterMode`: a select of the zone's heater modes (spec 218).
+const ZONE_ORDER_OPTIONS: {
+  key: string;
+  group: string;
+  parametric: boolean;
+  heaterMode?: true;
+}[] = [
   { key: "allLightsOn", group: "lights", parametric: false },
   { key: "allLightsOff", group: "lights", parametric: false },
   { key: "allLightsBrightness", group: "lights", parametric: true },
@@ -29,6 +37,7 @@ const ZONE_ORDER_OPTIONS: { key: string; group: string; parametric: boolean }[] 
   { key: "allThermostatsPowerOn", group: "heating", parametric: false },
   { key: "allThermostatsPowerOff", group: "heating", parametric: false },
   { key: "allThermostatsSetpoint", group: "heating", parametric: true },
+  { key: "allHeatersMode", group: "heating", parametric: true, heaterMode: true },
 ];
 
 /** Zone id itself plus every descendant, matching the backend's own
@@ -175,7 +184,8 @@ export function ButtonActionsSection({
         const zone = zones.find((z) => z.id === binding.config.zoneId);
         const orderKey = String(binding.config.orderKey);
         const val = binding.config.value;
-        const valueStr = val != null && val !== "" ? ` = ${val}` : "";
+        const shown = orderKey === "allHeatersMode" ? t(`controls.heater.${String(val)}`) : val;
+        const valueStr = val != null && val !== "" ? ` = ${shown}` : "";
         return `${t("buttonActions.effectType.zone_order")} → ${zone?.label ?? "?"} · ${t(`buttonActions.zoneOrder.${orderKey}`)}${valueStr}`;
       }
       default:
@@ -291,6 +301,8 @@ function AddEffectForm({
     name: string;
     type: string;
     zoneId: string;
+    enabled: boolean;
+    dataBindings: { alias: string; category?: string; value?: unknown }[];
     orderBindings: {
       alias: string;
       type?: string;
@@ -368,6 +380,16 @@ function AddEffectForm({
       ? String(initial.config.value)
       : "",
   );
+  // Spec 218 — the modes the selected zone's heaters can take.
+  const zoneHeaterModeList = useMemo(() => {
+    if (!zoZoneId) return [];
+    const scopeIds = new Set(findZoneAndDescendantIds(zoneTree, zoZoneId));
+    return zoneHeaterModes(
+      equipments
+        .filter((eq) => eq.type === "heater" && eq.enabled && scopeIds.has(eq.zoneId))
+        .map((eq) => ({ data: eq.dataBindings, orders: eq.orderBindings })),
+    ).modes;
+  }, [zoZoneId, zoneTree, equipments]);
   // Hide allShuttersStop/allAwningsStop from the picker if the selected
   // zone (+ its subtree, matching the backend's own zone-order scope)
   // contains a shutter/awning that can't really stop mid-travel (e.g.
@@ -382,9 +404,10 @@ function AddEffectForm({
     return ZONE_ORDER_OPTIONS.filter((opt) => {
       if (opt.key === "allShuttersStop") return shutterStopOk;
       if (opt.key === "allAwningsStop") return awningStopOk;
+      if (opt.heaterMode) return zoneHeaterModeList.length > 0;
       return true;
     });
-  }, [zoZoneId, zoneTree, equipments]);
+  }, [zoZoneId, zoneTree, equipments, zoneHeaterModeList]);
   // recipe_toggle
   const [instanceId, setInstanceId] = useState(
     initial?.effectType === "recipe_toggle" ? String(initial.config.instanceId ?? "") : "",
@@ -445,7 +468,7 @@ function AddEffectForm({
           const opt = ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey);
           config = { zoneId: zoZoneId, orderKey: zoOrderKey };
           if (opt?.parametric && zoValue !== "") {
-            config.value = Number(zoValue);
+            config.value = opt.heaterMode ? zoValue : Number(zoValue);
           }
           break;
         }
@@ -734,7 +757,12 @@ function AddEffectForm({
             <label className={FIELD_LABEL}>{t("buttonActions.zone")}</label>
             <select
               value={zoZoneId}
-              onChange={(e) => setZoZoneId(e.target.value)}
+              onChange={(e) => {
+                setZoZoneId(e.target.value);
+                // A heater mode from the previous zone may not exist in this one.
+                if (ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.heaterMode)
+                  setZoValue("");
+              }}
               className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
@@ -765,17 +793,36 @@ function AddEffectForm({
               </select>
             </div>
           )}
-          {zoOrderKey && ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.parametric && (
+          {zoOrderKey && ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.heaterMode && (
             <div>
-              <label className={FIELD_LABEL}>{t("modes.form.actionValuePlaceholder")}</label>
-              <input
-                type="number"
+              <label className={FIELD_LABEL}>{t("controls.heater.mode")}</label>
+              <select
                 value={zoValue}
                 onChange={(e) => setZoValue(e.target.value)}
                 className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
-              />
+              >
+                <option value="">{t("common.select")}</option>
+                {zoneHeaterModeList.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {t(heaterModeKey(mode))}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
+          {zoOrderKey &&
+            !ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.heaterMode &&
+            ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.parametric && (
+              <div>
+                <label className={FIELD_LABEL}>{t("modes.form.actionValuePlaceholder")}</label>
+                <input
+                  type="number"
+                  value={zoValue}
+                  onChange={(e) => setZoValue(e.target.value)}
+                  className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                />
+              </div>
+            )}
         </div>
       )}
 

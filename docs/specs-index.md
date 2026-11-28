@@ -364,6 +364,7 @@ Specs are grouped by theme and annotated with status:
 | 214 | A recipe publishes data on an equipment                                 | 🟡     | A recipe declares `publishes` on an `equipment` slot and calls `ctx.helpers.equipmentData.publish`; shown as a `virtual:recipe:` binding, historized; appliance surfaces read a plug's watts. Shipped in v1.88.0.                                                     |
 | 216 | An integration says why it is not connected                             | 🟡     | Optional `getStatusDetail()` on plugins, relayed as `statusDetail` and shown in the integration panel; MQTT plugins default to `mqtt://host.docker.internal:1883` and explain connection errors. Shipped in v1.90.0.                                                  |
 | 217 | Pilot-wire modes on the electric heater                                 | 🟡     | `heater` covers relay and pilot-wire modules (NodOn): `pilot_wire_mode` contract, six modes, mode selector; zigbee2mqtt plugin translates the values; amends 027. Shipped in v1.90.0.                                                                                 |
+| 218 | Heaters in zone orders                                                  | 🟡     | Zone order `allHeatersMode` puts every heater of a zone in a mode (relays only comfort/eco), flame menu on the Home view and the zone Heating widget, button action; follows 217. Unreleased.                                                                         |
 
 ---
 

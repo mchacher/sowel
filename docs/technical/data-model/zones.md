@@ -103,20 +103,23 @@ interface ZoneAggregatedData {
 
 Zones expose bulk commands that fan out to all Equipments of matching types within the zone subtree. The valid keys are defined in `EquipmentManager.ZONE_ORDERS`:
 
-| Order Key                | Target EquipmentTypes                    | OrderCategory dispatched | Value                  |
-| ------------------------ | ---------------------------------------- | ------------------------ | ---------------------- |
-| `allLightsOn`            | light_onoff, light_dimmable, light_color | `light_toggle`           | `"ON"`                 |
-| `allLightsOff`           | light_onoff, light_dimmable, light_color | `light_toggle`           | `"OFF"`                |
-| `allLightsBrightness`    | light_dimmable, light_color              | `set_brightness`         | from request body      |
-| `allShuttersOpen`        | shutter                                  | `shutter_move`           | `"OPEN"`               |
-| `allShuttersStop`        | shutter                                  | `shutter_move`           | `"STOP"`               |
-| `allShuttersClose`       | shutter                                  | `shutter_move`           | `"CLOSE"`              |
-| `allAwningsRetract`      | awning                                   | `shutter_move`           | `"OPEN"`               |
-| `allAwningsStop`         | awning                                   | `shutter_move`           | `"STOP"`               |
-| `allAwningsExtend`       | awning                                   | `shutter_move`           | `"CLOSE"`              |
-| `allThermostatsPowerOn`  | thermostat                               | `toggle_power`           | `true`                 |
-| `allThermostatsPowerOff` | thermostat                               | `toggle_power`           | `false`                |
-| `allThermostatsSetpoint` | thermostat                               | `set_setpoint`           | from request body (°C) |
+| Order Key                | Target EquipmentTypes                    | OrderCategory dispatched | Value                    |
+| ------------------------ | ---------------------------------------- | ------------------------ | ------------------------ |
+| `allLightsOn`            | light_onoff, light_dimmable, light_color | `light_toggle`           | `"ON"`                   |
+| `allLightsOff`           | light_onoff, light_dimmable, light_color | `light_toggle`           | `"OFF"`                  |
+| `allLightsBrightness`    | light_dimmable, light_color              | `set_brightness`         | from request body        |
+| `allShuttersOpen`        | shutter                                  | `shutter_move`           | `"OPEN"`                 |
+| `allShuttersStop`        | shutter                                  | `shutter_move`           | `"STOP"`                 |
+| `allShuttersClose`       | shutter                                  | `shutter_move`           | `"CLOSE"`                |
+| `allAwningsRetract`      | awning                                   | `shutter_move`           | `"OPEN"`                 |
+| `allAwningsStop`         | awning                                   | `shutter_move`           | `"STOP"`                 |
+| `allAwningsExtend`       | awning                                   | `shutter_move`           | `"CLOSE"`                |
+| `allThermostatsPowerOn`  | thermostat                               | `toggle_power`           | `true`                   |
+| `allThermostatsPowerOff` | thermostat                               | `toggle_power`           | `false`                  |
+| `allThermostatsSetpoint` | thermostat                               | `set_setpoint`           | from request body (°C)   |
+| `allHeatersMode`         | heater                                   | per wiring (spec 218)    | from request body (mode) |
+
+`allHeatersMode` takes one of the six pilot-wire modes (anything else answers 400). Each heater's order comes from `heaterModeOrder` (`src/shared/heater-contract.ts`): a pilot module gets `set_pilot_wire_mode` when it accepts the mode, a relay gets its toggle OFF for `comfort` and ON for `eco`, and any other heater is skipped (neither executed nor an error).
 
 ### 5 SQLite Schema
 

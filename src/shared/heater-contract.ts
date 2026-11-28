@@ -104,3 +104,68 @@ export function pilotWireBindingKeys(
     orderKeys: modeOrders.map((o) => o.key),
   };
 }
+
+// ============================================================
+// Spec 218 — heaters in zone orders
+// ============================================================
+
+interface HeaterModeOrderBinding {
+  alias: string;
+  category?: string | null;
+  enumValues?: readonly string[] | null;
+}
+
+const RELAY_TOGGLE_CATEGORIES = ["toggle_power", "light_toggle"];
+
+/** The on/off order of a relay heater: by category, then the `state` alias. */
+function relayToggle<T extends HeaterModeOrderBinding>(orders: readonly T[]): T | undefined {
+  return (
+    orders.find((o) => o.category != null && RELAY_TOGGLE_CATEGORIES.includes(o.category)) ??
+    orders.find((o) => o.alias === "state")
+  );
+}
+
+/**
+ * The order that puts one heater in `mode`, or null when it cannot. A relay
+ * only takes comfort (OFF) and eco (ON): it is never moved to an approximation
+ * of another mode. A pilot module only takes the modes it accepts.
+ */
+export function heaterModeOrder(
+  state: HeaterState,
+  orders: readonly HeaterModeOrderBinding[],
+  mode: PilotWireMode,
+): { alias: string; value: string } | null {
+  if (state.wiring === "pilot") {
+    if (!state.modes.includes(mode)) return null;
+    const order = orders.find((o) => o.category === PILOT_WIRE_ORDER_CATEGORY);
+    return order ? { alias: order.alias, value: mode } : null;
+  }
+  if (mode !== "comfort" && mode !== "eco") return null;
+  const toggle = relayToggle(orders);
+  if (!toggle) return null;
+  const pattern = mode === "eco" ? /^on$/i : /^off$/i;
+  const value = toggle.enumValues?.find((v) => pattern.test(v)) ?? (mode === "eco" ? "ON" : "OFF");
+  return { alias: toggle.alias, value };
+}
+
+/**
+ * The modes offered for a set of heaters (those at least one of them can take,
+ * in contract order) and their common mode: the one they all report, when it
+ * is the same and known. Heaters that take no mode are left out.
+ */
+export function zoneHeaterModes(
+  heaters: readonly { data: readonly HeaterData[]; orders: readonly HeaterModeOrderBinding[] }[],
+): { modes: PilotWireMode[]; common: PilotWireMode | null } {
+  const offered = new Set<PilotWireMode>();
+  const reported: (PilotWireMode | null)[] = [];
+  for (const heater of heaters) {
+    const state = resolveHeaterState(heater.data, heater.orders);
+    const takes = PILOT_WIRE_MODES.filter((m) => heaterModeOrder(state, heater.orders, m) !== null);
+    if (takes.length === 0) continue;
+    for (const m of takes) offered.add(m);
+    reported.push(state.mode);
+  }
+  const first = reported[0] ?? null;
+  const common = first !== null && reported.every((m) => m === first) ? first : null;
+  return { modes: PILOT_WIRE_MODES.filter((m) => offered.has(m)), common };
+}
