@@ -240,6 +240,16 @@ describe("zone heaters mode", () => {
     expect(screen.getAllByRole("menuitem").map((b) => b.textContent)).toEqual(["Comfort", "Eco"]);
   });
 
+  // #1331 — one relay Sowel has no reading of: unknown, not « Mixed ».
+  it("tile: says « Unknown » for a lone relay with no reading", () => {
+    const unread = heater("u", { alias: "state", category: "light_state", value: null }, [
+      { alias: "state", category: "light_toggle", enumValues: ["ON", "OFF"] },
+    ]);
+    render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[unread]} />);
+    expect(screen.getByText("Unknown")).toBeTruthy();
+    expect(screen.queryByText("Mixed")).toBeNull();
+  });
+
   it("sheet: one button per mode, no thermostat on/off", () => {
     vi.mocked(api.executeZoneOrder).mockResolvedValue(undefined as never);
     render(

@@ -54,7 +54,7 @@ the alias `pilot_wire_mode` for both, and the closed vocabulary `comfort`, `comf
 A single resolver answers, for a heater: its wiring, its mode (or unknown) and the modes it accepts.
 
 - A `pilot_wire_mode` data or `set_pilot_wire_mode` order bound: wiring `pilot`. `state` is ignored.
-- Otherwise: wiring `relay`, exactly today's behaviour, missing state read as comfort included.
+- Otherwise: wiring `relay`, exactly today's behaviour, missing state read as comfort included. _Amended by #1331: a relay with no reading is now unknown, never comfort._
 - In `pilot` wiring, a missing or unknown value is unknown: never shown as comfort.
 - A heater runs when its mode is `comfort`, `comfort_minus_1` or `comfort_minus_2`.
 

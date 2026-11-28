@@ -161,11 +161,12 @@ export function heaterModeOrder(
 /**
  * The modes offered for a set of heaters (those at least one of them can take,
  * in contract order) and their common mode: the one they all report, when it
- * is the same and known. Heaters that take no mode are left out.
+ * is the same and known; `mixed` when they report different known modes.
+ * Heaters that take no mode are left out.
  */
 export function zoneHeaterModes(
   heaters: readonly { data: readonly HeaterData[]; orders: readonly HeaterModeOrderBinding[] }[],
-): { modes: PilotWireMode[]; common: PilotWireMode | null } {
+): { modes: PilotWireMode[]; common: PilotWireMode | null; mixed: boolean } {
   const offered = new Set<PilotWireMode>();
   const reported: (PilotWireMode | null)[] = [];
   for (const heater of heaters) {
@@ -177,5 +178,7 @@ export function zoneHeaterModes(
   }
   const first = reported[0] ?? null;
   const common = first !== null && reported.every((m) => m === first) ? first : null;
-  return { modes: PILOT_WIRE_MODES.filter((m) => offered.has(m)), common };
+  // Mixed: two different known modes. Otherwise a missing common mode is unknown (#1331).
+  const mixed = new Set(reported.filter((m) => m !== null)).size > 1;
+  return { modes: PILOT_WIRE_MODES.filter((m) => offered.has(m)), common, mixed };
 }

@@ -1606,14 +1606,14 @@ function HeaterDetailContent({
           <button
             onClick={() => void setRelayMode("comfort")}
             disabled={executing}
-            className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border bg-heat/10 text-heat border-heat/30 hover:bg-heat/20"
+            className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border bg-heat/10 text-heat border-heat/30 hover:bg-heat/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Flame size={18} strokeWidth={1.5} /> {t("controls.heater.comfort")}
           </button>
           <button
             onClick={() => void setRelayMode("eco")}
             disabled={executing}
-            className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
+            className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Snowflake size={18} strokeWidth={1.5} /> {t("controls.heater.eco")}
           </button>

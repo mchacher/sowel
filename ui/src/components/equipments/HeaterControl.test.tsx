@@ -107,7 +107,8 @@ describe("HeaterControl — relay without a reading", () => {
     const send = vi.fn().mockResolvedValue(undefined);
     render(<HeaterControl equipment={relay(null)} onExecuteOrder={send} />);
     expect(screen.getByText("Unknown")).toBeTruthy();
-    expect(screen.queryByText("Comfort")).toBeTruthy(); // the button, not the state
+    expect(screen.getByRole("button", { name: /Comfort/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Switch to/ })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: /Eco/ }));
     expect(send).toHaveBeenCalledWith("state", "ON");
   });

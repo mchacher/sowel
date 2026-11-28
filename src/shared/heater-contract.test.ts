@@ -178,6 +178,7 @@ describe("zoneHeaterModes (spec 218)", () => {
     expect(zoneHeaterModes([relayHeater("OFF"), relayHeater("ON")])).toEqual({
       modes: ["comfort", "eco"],
       common: null,
+      mixed: true,
     });
   });
 
@@ -186,7 +187,11 @@ describe("zoneHeaterModes (spec 218)", () => {
       pilotHeater("eco", ["off", "frost_protection", "eco"]),
       relayHeater("ON"),
     ]);
-    expect(result).toEqual({ modes: ["comfort", "eco", "frost_protection", "off"], common: "eco" });
+    expect(result).toEqual({
+      modes: ["comfort", "eco", "frost_protection", "off"],
+      common: "eco",
+      mixed: false,
+    });
   });
 
   it("has a common mode only when every heater reports the same known one", () => {
@@ -197,11 +202,18 @@ describe("zoneHeaterModes (spec 218)", () => {
     expect(zoneHeaterModes([relayHeater(null), pilotHeater("comfort")]).common).toBeNull();
   });
 
+  it("is mixed only with two different known modes, otherwise unknown (#1331)", () => {
+    expect(zoneHeaterModes([relayHeater("ON"), pilotHeater("comfort")]).mixed).toBe(true);
+    expect(zoneHeaterModes([relayHeater(null)])).toMatchObject({ common: null, mixed: false });
+    expect(zoneHeaterModes([relayHeater(null), relayHeater("OFF")]).mixed).toBe(false);
+  });
+
   it("offers nothing when no heater can be commanded", () => {
     expect(zoneHeaterModes([{ data: [mode("eco")], orders: [] }])).toEqual({
       modes: [],
       common: null,
+      mixed: false,
     });
-    expect(zoneHeaterModes([])).toEqual({ modes: [], common: null });
+    expect(zoneHeaterModes([])).toEqual({ modes: [], common: null, mixed: false });
   });
 });

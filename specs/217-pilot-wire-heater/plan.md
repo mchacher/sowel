@@ -21,29 +21,29 @@
 
 ## Test Plan
 
-| Module                                             | Scenario                                              | Expected                                  |
-| -------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------- |
-| heater-contract                                    | Relay ON / OFF / no state                             | eco / comfort / comfort (unchanged)       |
-| heater-contract                                    | Pilot mode plus contradictory `state`                 | Pilot mode wins                           |
-| heater-contract                                    | Pilot value null or unknown                           | Mode null, wiring pilot                   |
-| heater-contract                                    | Order with a subset, a foreign value, or no enum      | Subset, filtered, all six                 |
-| heater-contract                                    | Data only / order only                                | No modes offered / mode null, modes given |
-| binding-candidates                                 | Pilot device with state, metering, probes             | Mode and metering only                    |
-| binding-candidates                                 | Relay device                                          | Unchanged                                 |
-| bindingUtils                                       | Plan and missing bindings for a pilot device          | Alias `pilot_wire_mode`, no `state`       |
-| bindingUtils                                       | Plan for a relay device                               | Unchanged                                 |
-| equipment-manager                                  | API creation, pilot device / relay device             | No `state` / unchanged                    |
-| equipment-running                                  | Each pilot mode, unknown, relay                       | Only comforts run                         |
-| HeaterControl                                      | Pilot: buttons, click, disabled; relay: toggle        | Right order alias and value               |
-| ZoneWidget                                         | Relay in eco / comfort, pilot eco / comfort           | Cold / warm, cold / warm                  |
-| mobile-click-action                                | Tap on a pilot heater                                 | Opens the sheet                           |
-| EquipmentWidget                                    | Tap on a pilot tile / relay tile                      | Sheet / toggle                            |
-| HeaterDetailSheet                                  | Pilot with `state` bound / relay both ways            | Mode buttons only / right value           |
-| WidgetGrid, MobileWidgetCard, CompactEquipmentCard | Pilot heater                                          | Warm state, mode, selector                |
-| ZoneWidget                                         | On/off button beside a warm or eco heater             | Commands the thermostats on               |
-| plugin pilot-wire                                  | Six values both ways, unknown value                   | Translated, passed through                |
-| plugin parser                                      | Discovery and payload of a SIN-4-FP-21; other devices | Categories, values; unchanged             |
-| plugin executeOrder                                | `pilot_wire_mode` order; same string on another key   | Z2M value sent; untouched                 |
+| Module                                             | Scenario                                              | Expected                                      |
+| -------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------- |
+| heater-contract                                    | Relay ON / OFF / no state                             | eco / comfort / comfort (unknown since #1331) |
+| heater-contract                                    | Pilot mode plus contradictory `state`                 | Pilot mode wins                               |
+| heater-contract                                    | Pilot value null or unknown                           | Mode null, wiring pilot                       |
+| heater-contract                                    | Order with a subset, a foreign value, or no enum      | Subset, filtered, all six                     |
+| heater-contract                                    | Data only / order only                                | No modes offered / mode null, modes given     |
+| binding-candidates                                 | Pilot device with state, metering, probes             | Mode and metering only                        |
+| binding-candidates                                 | Relay device                                          | Unchanged                                     |
+| bindingUtils                                       | Plan and missing bindings for a pilot device          | Alias `pilot_wire_mode`, no `state`           |
+| bindingUtils                                       | Plan for a relay device                               | Unchanged                                     |
+| equipment-manager                                  | API creation, pilot device / relay device             | No `state` / unchanged                        |
+| equipment-running                                  | Each pilot mode, unknown, relay                       | Only comforts run                             |
+| HeaterControl                                      | Pilot: buttons, click, disabled; relay: toggle        | Right order alias and value                   |
+| ZoneWidget                                         | Relay in eco / comfort, pilot eco / comfort           | Cold / warm, cold / warm                      |
+| mobile-click-action                                | Tap on a pilot heater                                 | Opens the sheet                               |
+| EquipmentWidget                                    | Tap on a pilot tile / relay tile                      | Sheet / toggle                                |
+| HeaterDetailSheet                                  | Pilot with `state` bound / relay both ways            | Mode buttons only / right value               |
+| WidgetGrid, MobileWidgetCard, CompactEquipmentCard | Pilot heater                                          | Warm state, mode, selector                    |
+| ZoneWidget                                         | On/off button beside a warm or eco heater             | Commands the thermostats on                   |
+| plugin pilot-wire                                  | Six values both ways, unknown value                   | Translated, passed through                    |
+| plugin parser                                      | Discovery and payload of a SIN-4-FP-21; other devices | Categories, values; unchanged                 |
+| plugin executeOrder                                | `pilot_wire_mode` order; same string on another key   | Z2M value sent; untouched                     |
 
 ## Validation Plan
 
