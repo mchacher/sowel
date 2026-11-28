@@ -63,11 +63,24 @@ function FailedOverlay({ failure, showReason }: { failure: UpdateFailure; showRe
   );
 }
 
+/** Only a known starting version, and a different one, means the swap is done. */
+function isNewVersion(original: string | null, current: string): boolean {
+  return original !== null && current !== original;
+}
+
 function ActiveOverlay() {
   const { t } = useTranslation();
   const wsStatus = useWebSocket((s) => s.status);
   const [showFallback, setShowFallback] = useState(false);
-  const originalVersionRef = useRef<string | null>(null);
+  // The version Sowel runs before the swap. The store already knows it for an
+  // update (the pill offered it), so it is set before the first request goes
+  // out; a restart has no pending update and learns it from the first answer.
+  // While it is unknown nothing reloads: two answers racing at mount, or a
+  // phone's WebSocket reconnecting on wake, used to reload the page before
+  // the update had even started, and the overlay was gone for good (#1337).
+  const originalVersionRef = useRef<string | null>(
+    useWebSocket.getState().updateAvailable?.current ?? null,
+  );
 
   // Capture original version + poll for change
   useEffect(() => {
@@ -78,18 +91,16 @@ function ActiveOverlay() {
       try {
         const info = await getSystemVersion();
         if (cancelled) return;
-        originalVersionRef.current = info.current;
+        originalVersionRef.current ??= info.current;
       } catch {
-        // Sowel may already be down — keep polling, we'll match against any version
+        // Sowel may already be down: keep polling, the first answer sets it
       }
 
       intervalId = setInterval(async () => {
         try {
           const info = await getSystemVersion();
           if (cancelled) return;
-          if (originalVersionRef.current === null || info.current !== originalVersionRef.current) {
-            window.location.reload();
-          }
+          if (isNewVersion(originalVersionRef.current, info.current)) window.location.reload();
         } catch {
           // Sowel is restarting — keep polling
         }
@@ -120,9 +131,8 @@ function ActiveOverlay() {
     getSystemVersion()
       .then((info) => {
         if (cancelled) return;
-        if (originalVersionRef.current === null || info.current !== originalVersionRef.current) {
-          window.location.reload();
-        }
+        if (isNewVersion(originalVersionRef.current, info.current)) window.location.reload();
+        else originalVersionRef.current ??= info.current;
       })
       .catch(() => {
         /* ignore */
