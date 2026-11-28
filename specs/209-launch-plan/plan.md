@@ -21,8 +21,16 @@ The steps and their content are in [spec.md](spec.md). This file tracks them.
   - [x] `sowel-site` is live at https://sowel.org (one bilingual page, no comparison section)
   - [x] `docs.sowel.org` is a plain manual again: scroll-flip landing retired, Material theme on the site's tokens
 - [ ] Step 3 — Proof: 60 to 90 second video, one numbered real case, two articles (FR and EN)
+  - [x] Launch film (long 2:38, short 1:14), on sowel.org
+  - [x] Articles on sowel.org, FR and EN: solar surplus, comfort, knowledge of the home
+  - [ ] One numbered real case
+  - [ ] Short tutorials (idea of 2026-11-28): one concrete result each, 5 or 6 captures, about 600 words,
+        titled by the result, not the mechanism. First list: install on a Raspberry Pi in 15 minutes, a first
+        Zigbee plug or sensor, light on entering a room, alert when the garage door stays open, water heater on
+        solar surplus, Away mode. On sowel.org in a Guides section, each linked to its manual page. None on AI
+        recipes until they ship. Background articles stay, one a month at most.
 - [ ] Step 4 — Launch (week 7, staggered): French channels, English channels, awesome-selfhosted PR
-- [ ] Step 5 — Upkeep: reply within 24 hours, one piece a month, `demo.sowel.org` as second wave
+- [ ] Step 5 — Upkeep: reply within 24 hours, one piece a month (a tutorial or an article), `demo.sowel.org` as second wave
 
 ## Gates
 
