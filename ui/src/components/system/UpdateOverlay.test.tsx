@@ -122,6 +122,9 @@ describe("UpdateOverlay reload", () => {
   const reload = vi.fn();
   const version = vi.mocked(getSystemVersion);
   const info = (current: string) => ({ current }) as SystemVersionInfo;
+  // A macrotask runs after every pending microtask, so each answered call has
+  // reached its reload check by then, however many awaits it goes through.
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
   beforeEach(() => {
     reload.mockReset();
@@ -147,7 +150,7 @@ describe("UpdateOverlay reload", () => {
     render(<UpdateOverlay />);
 
     await waitFor(() => expect(version).toHaveBeenCalledTimes(2));
-    await Promise.resolve();
+    await settle();
     expect(reload).not.toHaveBeenCalled();
     expect(screen.getByText("Update in progress")).toBeTruthy();
   });
@@ -158,7 +161,7 @@ describe("UpdateOverlay reload", () => {
     render(<UpdateOverlay />);
 
     await waitFor(() => expect(version).toHaveBeenCalledTimes(2));
-    await Promise.resolve();
+    await settle();
     expect(reload).not.toHaveBeenCalled();
   });
 
